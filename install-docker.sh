@@ -20,6 +20,10 @@ sudo apt-get update -y
 # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 
+# Manage Docker as a non-root user
+sudo usermod -aG docker $USER
+newgrp docker
+
 # Verify Docker installation by displaying the version
 docker --version
 docker compose version
