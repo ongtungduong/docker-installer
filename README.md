@@ -15,3 +15,9 @@ Run the following command to install Docker on your Ubuntu server:
 ```bash
 curl https://raw.githubusercontent.com/ongtungduong/docker-installer/main/install-docker.sh | bash
 ```
+
+To install specific version of Docker. For example version 20.10.24:
+
+```bash
+curl https://raw.githubusercontent.com/ongtungduong/docker-installer/main/install-docker.sh | version="20.10.24" bash
+```
