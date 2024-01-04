@@ -18,7 +18,17 @@ echo "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/doc
 sudo apt-get update -y
 
 # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+version=$1
+if [[ -z $version ]]; then
+    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+else
+    version_string=$(apt-cache madison docker-ce | awk '{ print $3 }' | grep $version)
+    if [[ ! $version =~ ^[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}$ ]] || [[ -z $version_string ]]; then
+        echo "Invalid version"
+        exit 1
+    fi
+    sudo apt-get install docker-ce=$version_string docker-ce-cli=$version_string containerd.io docker-buildx-plugin docker-compose-plugin -y
+fi
 
 # Manage Docker as a non-root user
 sudo usermod -aG docker $USER
