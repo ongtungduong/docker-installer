@@ -18,7 +18,6 @@ echo "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/doc
 sudo apt-get update -y
 
 # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin
-version=$1
 if [[ -z $version ]]; then
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 else
