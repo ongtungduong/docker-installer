@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Uninstall any conflicting packages
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg -y; done
+sudo apt-get purge docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras -y
+
 # Update package list and install necessary dependencies
 sudo apt-get update -y
 sudo apt-get install ca-certificates curl gnupg -y

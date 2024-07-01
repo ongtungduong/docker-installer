@@ -4,15 +4,7 @@
 
 - Make sure that your OS matches Docker Engine's requirements.
 
-- You need to uninstall any conflicting packages before running the script.
-  ```bash
-  for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
-  ```
-  ```bash
-  sudo apt-get purge docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras
-  ```
-
-- This script will install the latest version of Docker Engine and Docker Compose.
+- This script will uninstall any conflicting packages and install the latest version of Docker Engine and Docker Compose.
 
 ## Usage
 
