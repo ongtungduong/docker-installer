@@ -17,5 +17,5 @@ bash <(curl -sSL https://github.com/ongtungduong/docker-installer/raw/main/insta
 To install specific version of Docker. For example version 20.10.24:
 
 ```bash
-version="20.10.24" bash <(curl -sSL https://github.com/ongtungduong/docker-installer/raw/main/install-docker.sh)
+VERSION="20.10.24" bash <(curl -sSL https://github.com/ongtungduong/docker-installer/raw/main/install-docker.sh)
 ```

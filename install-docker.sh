@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Uninstall any conflicting packages
-for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg -y; done
-sudo apt-get purge docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras -y
-
 # Update package list and install necessary dependencies
 sudo apt-get update -y
 sudo apt-get install ca-certificates curl gnupg -y
@@ -22,15 +18,15 @@ echo "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/doc
 sudo apt-get update -y
 
 # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin
-if [[ -z $version ]]; then
+if [[ -z $VERSION ]]; then
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 else
-    version_string=$(apt-cache madison docker-ce | awk '{ print $3 }' | grep $version)
-    if [[ ! $version =~ ^[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}$ ]] || [[ -z $version_string ]]; then
+    DOCKER_VERSION=$(apt-cache madison docker-ce | awk '{ print $3 }' | grep $VERSION)
+    if [[ ! $VERSION =~ ^[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}$ ]] || [[ -z $DOCKER_VERSION ]]; then
         echo "Invalid version"
         exit 1
     fi
-    sudo apt-get install docker-ce=$version_string docker-ce-cli=$version_string containerd.io docker-buildx-plugin docker-compose-plugin -y
+    sudo apt-get install docker-ce=$DOCKER_VERSION docker-ce-cli=$DOCKER_VERSION containerd.io docker-buildx-plugin docker-compose-plugin -y
 fi
 
 # Manage Docker as a non-root user
