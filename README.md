@@ -2,9 +2,9 @@
 
 **This project is a bash script that aims to setup Docker on Ubuntu servers, as easily as possible!**
 
-- Make sure that your OS matches Docker Engine's requirements.
+- Make sure that your OS matches Docker Engine's requirements and uninstall any conflicting packages.
 
-- This script will uninstall any conflicting packages and install the latest version of Docker Engine and Docker Compose.
+- This script will install the latest version of Docker Engine and Docker Compose.
 
 ## Usage
 
