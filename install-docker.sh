@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Check if Docker is already installed
+if docker --version > /dev/null 2>&1; then
+    echo "Docker is already installed"
+    exit 0
+fi
+
 # Update package list and install necessary dependencies
 sudo apt-get update -y
 sudo apt-get install ca-certificates curl gnupg -y
@@ -34,5 +40,6 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # Verify Docker installation by displaying the version
+echo "Docker installed successfully!"
 docker --version
 docker compose version
