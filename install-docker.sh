@@ -32,6 +32,22 @@ function installDockerAPT() {
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 }
 
+function installDockerRPM() {
+    OS=$(getOS)
+
+    # Install the dnf-plugins-core package and set up the repository.
+    sudo dnf install dnf-plugins-core -y
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/${OS}/docker-ce.repo -y
+
+    # Request the user to verify the fingerprint of the GPG key
+    echo "Verify that the fingerprint matches 060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35 before accepting the GPG key."
+    read -p "Press enter to continue..."
+
+    # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin.
+    sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+}
+
+
 function checkDockerInstallation() {
 	if docker --version > /dev/null 2>&1; then
 		echo "Docker is already installed"
@@ -57,6 +73,9 @@ function main() {
     case $(getOS) in
         "ubuntu"|"debian"|"raspbian")
             installDockerAPT
+            ;;
+        "fedora"|"rhel"|"centos")
+            installDockerRPM
             ;;
         *)
             echo "Your operating system is not supported."
