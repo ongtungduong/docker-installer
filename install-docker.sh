@@ -68,8 +68,8 @@ function manageDockerAsNonRootUser() {
 }
 
 function configureDockerToStartOnBoot() {
-    sudo systemctl enable docker
-    sudo systemctl enable containerd
+    sudo systemctl enable docker --now
+    sudo systemctl enable containerd --now
 }
 
 function main() {
