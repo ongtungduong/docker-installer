@@ -49,17 +49,17 @@ function installDockerDNF() {
 
 
 function checkDockerInstallation() {
-	if docker --version > /dev/null 2>&1; then
-		echo "Docker is already installed"
-		echo "If you want to install a different version, you must uninstall the current version first"
-		exit 1
-	fi
+    if docker --version > /dev/null 2>&1; then
+        echo "Docker is already installed"
+        echo "If you want to install a different version, you must uninstall the current version first"
+        exit 1
+    fi
 }
 
 function manageDockerAsNonRootUser() {
     sudo groupadd docker
-	sudo usermod -aG docker $USER
-	newgrp docker
+    sudo usermod -aG docker $USER
+    newgrp docker
 }
 
 function configureDockerToStartOnBoot() {
