@@ -32,7 +32,7 @@ function installDockerAPT() {
     sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 }
 
-function installDockerRPM() {
+function installDockerDNF() {
     OS=$(getOS)
 
     # Install the dnf-plugins-core package and set up the repository.
@@ -75,7 +75,7 @@ function main() {
             installDockerAPT
             ;;
         "fedora"|"rhel"|"centos")
-            installDockerRPM
+            installDockerDNF
             ;;
         *)
             echo "Your operating system is not supported."
