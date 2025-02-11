@@ -58,7 +58,7 @@ function checkDockerInstallation() {
 
 function manageDockerAsNonRootUser() {
     sudo groupadd docker
-	sudo usermod -aG docker $n
+	sudo usermod -aG docker $USER
 	newgrp docker
 }
 
