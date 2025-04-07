@@ -24,3 +24,10 @@ Run the following command:
 ```bash
 bash <(curl -sSL https://github.com/ongtungduong/docker-installer/raw/main/install-docker.sh)
 ```
+
+To install lazydocker, run the following command:
+
+```bash
+bash <(curl -sSL https://github.com/ongtungduong/docker-installer/raw/main/install-lazydocker.sh)
+```
+
