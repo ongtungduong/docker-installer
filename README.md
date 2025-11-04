@@ -6,16 +6,7 @@
 
 - This script will install the latest version of Docker Engine and Docker Compose.
 
-## Requirements
-
-- Supported distributions:
-
-- Ubuntu >= 20.04
-- Debian >= 11
-- RHEL >= 8
-- Fedora >= 40
-- Raspberry Pi OS (32-bit) >= 11
-- CentOS >= 9
+- Tested on Ubuntu, use with caution on other operating systems.
 
 ## Usage
 
