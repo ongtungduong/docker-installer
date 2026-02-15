@@ -1,90 +1,110 @@
 #!/bin/bash
+set -euo pipefail
 
-function getOS(){
+# ── Constants ────────────────────────────────────────────────────────
+readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
+readonly DOCKER_GPG_FINGERPRINT="060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35"
+
+# ── Logging helpers ──────────────────────────────────────────────────
+log()  { printf '\033[1;32m[INFO]\033[0m  %s\n' "$*"; }
+warn() { printf '\033[1;33m[WARN]\033[0m  %s\n' "$*" >&2; }
+err()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; }
+die()  { err "$@"; exit 1; }
+
+# ── OS detection (cached) ───────────────────────────────────────────
+detect_os() {
+    [[ -f /etc/os-release ]] || die "/etc/os-release not found. Unsupported system."
+    # shellcheck source=/dev/null
     source /etc/os-release
-    echo "${ID}"
+    printf '%s' "${ID}"
 }
 
-function installDockerAPT() {
-    OS=$(getOS)
-    
-    # Update package list and install necessary dependencies
-    sudo apt-get update -y
-    sudo apt-get install ca-certificates curl -y
+# ── Pre-flight checks ───────────────────────────────────────────────
+preflight() {
+    if command -v docker &>/dev/null; then
+        die "Docker is already installed ($(docker --version)). Uninstall it first if you want a fresh install."
+    fi
 
-    # Create the keyrings directory if it doesn't exist
-    sudo install -m 0755 -d /etc/apt/keyrings
-
-    # Add Docker's GPG key to the keyring
-    sudo curl -fsSL "https://download.docker.com/linux/${OS}/gpg" -o /etc/apt/keyrings/docker.asc
-    sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-    # Add Docker repository to APT sources
-    echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${OS} \
-    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-    # Update package list again to include Docker repository
-    sudo apt-get update -y
-
-    # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin
-    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-}
-
-function installDockerDNF() {
-    OS=$(getOS)
-
-    # Install the dnf-plugins-core package and set up the repository.
-    sudo dnf install dnf-plugins-core -y
-    sudo dnf config-manager --add-repo https://download.docker.com/linux/${OS}/docker-ce.repo -y
-
-    # Request the user to verify the fingerprint of the GPG key
-    echo "Verify that the fingerprint matches 060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35 before accepting the GPG key."
-    read -p "Press enter to continue..."
-
-    # Install Docker Engine, Docker CLI, containerd.io, docker-buildx-plugin, and docker-compose-plugin.
-    sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-}
-
-
-function checkDockerInstallation() {
-    if docker --version > /dev/null 2>&1; then
-        echo "Docker is already installed"
-        echo "If you want to install a different version, you must uninstall the current version first"
-        exit 1
+    if [[ $EUID -ne 0 ]] && ! sudo -v 2>/dev/null; then
+        die "This script requires root or sudo privileges."
     fi
 }
 
-function manageDockerAsNonRootUser() {
-    sudo groupadd docker
-    sudo usermod -aG docker $USER
-    newgrp docker
+# ── APT-based install (Ubuntu / Debian / Raspbian) ──────────────────
+install_docker_apt() {
+    local os="$1"
+
+    log "Installing prerequisites…"
+    sudo apt-get update -y
+    sudo apt-get install -y ca-certificates curl
+
+    log "Adding Docker GPG key…"
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL "https://download.docker.com/linux/${os}/gpg" -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+    log "Adding Docker APT repository…"
+    # shellcheck source=/dev/null
+    local codename
+    codename=$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+    printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/%s %s stable\n' \
+        "$(dpkg --print-architecture)" "${os}" "${codename}" |
+        sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+    log "Installing Docker Engine…"
+    sudo apt-get update -y
+    sudo apt-get install -y "${DOCKER_PACKAGES[@]}"
 }
 
-function configureDockerToStartOnBoot() {
-    sudo systemctl enable docker --now
-    sudo systemctl enable containerd --now
+# ── DNF-based install (Fedora / RHEL / CentOS) ─────────────────────
+install_docker_dnf() {
+    local os="$1"
+
+    log "Installing dnf-plugins-core…"
+    sudo dnf install -y dnf-plugins-core
+    sudo dnf config-manager --add-repo "https://download.docker.com/linux/${os}/docker-ce.repo"
+
+    warn "Verify GPG fingerprint matches: ${DOCKER_GPG_FINGERPRINT}"
+    read -rp "Press Enter to continue (Ctrl-C to abort)… "
+
+    log "Installing Docker Engine…"
+    sudo dnf install -y "${DOCKER_PACKAGES[@]}"
 }
 
-function main() {
-    checkDockerInstallation
+# ── Post-install ─────────────────────────────────────────────────────
+setup_non_root_user() {
+    log "Configuring Docker for non-root usage…"
+    sudo groupadd -f docker                   # -f: no error if group exists
+    sudo usermod -aG docker "${USER}"
+}
 
-    case $(getOS) in
-        "ubuntu"|"debian"|"raspbian")
-            installDockerAPT
-            ;;
-        "fedora"|"rhel"|"centos")
-            installDockerDNF
-            ;;
-        *)
-            echo "Your operating system is not supported."
-            exit 1
-            ;;
+enable_on_boot() {
+    log "Enabling Docker & containerd on boot…"
+    sudo systemctl enable --now docker containerd
+}
+
+# ── Main ─────────────────────────────────────────────────────────────
+main() {
+    preflight
+
+    local os
+    os=$(detect_os)
+    log "Detected OS: ${os}"
+
+    case "${os}" in
+        ubuntu|debian|raspbian) install_docker_apt  "${os}" ;;
+        fedora|rhel|centos)     install_docker_dnf  "${os}" ;;
+        *) die "Unsupported operating system: ${os}" ;;
     esac
-    
-    manageDockerAsNonRootUser
-    configureDockerToStartOnBoot
+
+    enable_on_boot
+
+    log "Docker installed successfully!"
+
+    if [[ $EUID -ne 0 ]]; then
+        setup_non_root_user
+        warn "Log out and back in (or run 'newgrp docker') for group changes to take effect."
+    fi
 }
 
-main
+main "$@"
