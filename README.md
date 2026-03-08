@@ -4,40 +4,60 @@ A single-command bash script to install the latest Docker Engine and Docker Comp
 
 ## Features
 
-- Installs Docker Engine, CLI, containerd, Buildx, and Compose plugin
-- Supports APT-based (Ubuntu, Debian, Raspbian) and DNF-based (Fedora, RHEL, CentOS) distributions
-- Automatically configures non-root Docker access when run as a non-root user
-- Enables Docker and containerd to start on boot
-- Pre-flight checks to prevent conflicts with existing installations
+- **Online Installation (`install-docker.sh`)**: Installs Docker directly via the official APT or DNF repositories.
+- **Offline/Airgap Preparation (`prepare-airgap.sh`)**: Downloads the `.deb` or `.rpm` binaries for target architectures and operating systems so they can be securely moved to airgapped environments. 
 
 ## Prerequisites
 
-- A supported Linux distribution
-- Root or sudo privileges
+- Root or sudo privileges (for installation)
 - No existing Docker installation (uninstall any conflicting packages first)
 
 ## Usage
 
+### 1. Online Installation
+
+To install Docker Engine directly on your Linux machine:
+
 ```bash
-bash <(curl -sSL https://github.com/ongtungduong/docker-installer/raw/main/install-docker.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/ongtungduong/docker-installer/main/install-docker.sh)
 ```
 
-## What It Does
+- Supported Linux Distributions:
 
-1. Checks if Docker is already installed
-2. Detects the OS and selects the appropriate package manager
-3. Adds the official Docker repository and GPG key
-4. Installs Docker Engine and related packages
-5. Enables Docker and containerd services on boot
-6. Configures Docker for non-root usage (skipped when running as root)
+| OS                  | Supported Versions                        | Package Manager |
+| ------------------- | ----------------------------------------- | --------------- |
+| **Ubuntu**          | 25.10, 24.04 (LTS), 22.04 (LTS)           | apt             |
+| **Debian**          | 13 (Trixie), 12 (Bookworm), 11 (Bullseye) | apt             |
+| **Raspberry Pi OS** | 12 (stable), 11 (oldstable)               | apt             |
+| **RHEL**            | 8, 9, 10                                  | dnf             |
+| **CentOS Stream**   | 9, 10                                     | dnf             |
+| **Fedora**          | 43, 42, 41                                | dnf             |
 
-## Supported Distributions
+### 2. Prepare Files for Airgapped Installation (Offline)
 
-| Package Manager | Distributions            |
-| --------------- | ------------------------ |
-| APT             | Ubuntu, Debian, Raspbian |
-| DNF             | Fedora, RHEL, CentOS     |
+If your target server has no internet access, you can download the required Docker packages from any internet-connected machine (even a Mac) by running:
+
+```bash
+# Auto-detect the current Linux machine and download packages
+./prepare-airgap.sh
+
+# Or, explicitly define the target OS, version, and architecture (e.g., download Ubuntu 24.04 packages from a Mac)
+./prepare-airgap.sh --os ubuntu --os-version noble --arch amd64
+```
+
+- Supported Linux Distributions:
+
+```markdown
+| OS                  | Architecture          |
+| ------------------- | --------------------- |
+| **Ubuntu**          | 64-bit (amd64, arm64) |
+| **Debian**          | amd64, armhf, arm64   |
+| **Raspberry Pi OS** | 32-bit (armhf)        |
+| **RHEL**            | x86_64, aarch64       |
+| **CentOS Stream**   | x86_64, aarch64       |
+| **Fedora**          | x86_64, aarch64       |
+```
 
 ## Disclaimer
 
-This script has only been tested on **Ubuntu**. While it is designed to support other distributions listed above, use it on non-Ubuntu systems at your own risk.
+This script uses standard official Docker endpoints and procedures. However, always exercise caution when installing packages or using script execution from the web. Use it on untested operating systems at your own risk.
