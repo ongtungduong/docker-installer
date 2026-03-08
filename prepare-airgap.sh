@@ -31,13 +31,14 @@ EOF
 
 # ── Main ─────────────────────────────────────────────────────────────
 main() {
-    local target_os="" target_version="" target_arch=""
+    local target_os="" target_version="" target_arch="" dry_run=false
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --os) target_os="$2"; shift 2 ;;
             --os-version) target_version="$2"; shift 2 ;;
             --arch) target_arch="$2"; shift 2 ;;
+            --dry-run) dry_run=true; shift 1 ;;
             -h|--help) usage ;;
             *) die "Unknown option: $1" ;;
         esac
@@ -113,10 +114,14 @@ main() {
         file=$(grep -oE "$file_pattern" <<< "$index_html" | cut -d'"' -f2 | sort -V | tail -n 1 || true)
 
         if [[ -n "$file" ]]; then
-            log "Downloading $file..."
-            if ! curl -fSL "${base_url}${file}" -o "${dest_dir}/${file}"; then
-                err "Download failed for $file"
-                failed=$((failed + 1))
+            if [[ "$dry_run" == "true" ]]; then
+                log "[DRY RUN] Would download $file from $base_url"
+            else
+                log "Downloading $file..."
+                if ! curl -fSL "${base_url}${file}" -o "${dest_dir}/${file}"; then
+                    err "Download failed for $file"
+                    failed=$((failed + 1))
+                fi
             fi
         else
             err "Could not find any package matching $pkg at $base_url"
@@ -125,9 +130,14 @@ main() {
     done
 
     if [[ $failed -gt 0 ]]; then
-        warn "Some packages failed to download. Check the errors above."
+        warn "Some packages failed to find/download. Check the errors above."
     else
-        log "Completed! All files downloaded to ./${dest_dir}"
+        if [[ "$dry_run" == "true" ]]; then
+            log "Dry run completed successfully!"
+            rmdir "$dest_dir" 2>/dev/null || true
+        else
+            log "Completed! All files downloaded to ./${dest_dir}"
+        fi
     fi
 }
 
