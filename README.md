@@ -47,7 +47,6 @@ If your target server has no internet access, you can download the required Dock
 
 - Supported Linux Distributions:
 
-```markdown
 | OS                  | Architecture          |
 | ------------------- | --------------------- |
 | **Ubuntu**          | 64-bit (amd64, arm64) |
@@ -56,7 +55,6 @@ If your target server has no internet access, you can download the required Dock
 | **RHEL**            | x86_64, aarch64       |
 | **CentOS Stream**   | x86_64, aarch64       |
 | **Fedora**          | x86_64, aarch64       |
-```
 
 ## Disclaimer
 
