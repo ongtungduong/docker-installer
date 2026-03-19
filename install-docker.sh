@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+# set -euo pipefail
 
 # ── Constants ────────────────────────────────────────────────────────
 readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
@@ -104,4 +104,3 @@ main() {
 }
 
 main "$@"
-
