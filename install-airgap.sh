@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+# set -euo pipefail
 
 # ── Logging helpers ──────────────────────────────────────────────────
 log()  { printf '\033[1;32m[INFO]\033[0m  %s\n' "$*"; }
