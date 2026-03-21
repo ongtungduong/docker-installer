@@ -11,11 +11,21 @@ env:
   SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/install-docker.sh
 
 jobs:
-  ubuntu-2204:
-    name: Ubuntu 22.04
+  apt-distros:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:22.04
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Ubuntu 22.04",  image: "ubuntu:22.04" }
+          - { name: "Ubuntu 24.04",  image: "ubuntu:24.04" }
+          - { name: "Ubuntu 25.10",  image: "ubuntu:25.10" }
+          - { name: "Debian 11",     image: "debian:11" }
+          - { name: "Debian 12",     image: "debian:12" }
+          - { name: "Debian 13",     image: "debian:13" }
     steps:
       - name: Install curl
         run: apt-get update -y && apt-get install -y curl sudo
@@ -24,112 +34,28 @@ jobs:
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh
+          bash /tmp/install-docker.sh --yes
       - name: Verify Docker version
         run: docker --version
       - name: Verify Docker Compose version
         run: docker compose version
 
-  ubuntu-2404:
-    name: Ubuntu 24.04
+  dnf-distros:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:24.04
-    steps:
-      - name: Install curl
-        run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  ubuntu-2510:
-    name: Ubuntu 25.10
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:25.10
-    steps:
-      - name: Install curl
-        run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  debian-11:
-    name: Debian 11
-    runs-on: ubuntu-latest
-    container:
-      image: debian:11
-    steps:
-      - name: Install curl
-        run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  debian-12:
-    name: Debian 12
-    runs-on: ubuntu-latest
-    container:
-      image: debian:12
-    steps:
-      - name: Install curl
-        run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  debian-13:
-    name: Debian 13
-    runs-on: ubuntu-latest
-    container:
-      image: debian:13
-    steps:
-      - name: Install curl
-        run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  rhel-8:
-    name: RHEL 8
-    runs-on: ubuntu-latest
-    container:
-      image: registry.access.redhat.com/ubi8/ubi
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "RHEL 8",            image: "registry.access.redhat.com/ubi8/ubi" }
+          - { name: "RHEL 9",            image: "registry.access.redhat.com/ubi9/ubi" }
+          - { name: "CentOS Stream 9",   image: "quay.io/centos/centos:stream9" }
+          - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10" }
+          - { name: "Fedora 41",         image: "fedora:41" }
+          - { name: "Fedora 42",         image: "fedora:42" }
+          - { name: "Fedora 43",         image: "fedora:43" }
     steps:
       - name: Install curl
         run: dnf install -y curl sudo
@@ -138,122 +64,20 @@ jobs:
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
+          bash /tmp/install-docker.sh --yes
       - name: Verify Docker version
         run: docker --version
       - name: Verify Docker Compose version
         run: docker compose version
 
-  rhel-9:
-    name: RHEL 9
+  test-airgap-prepare:
+    name: Airgap Prepare (dry-run)
     runs-on: ubuntu-latest
-    container:
-      image: registry.access.redhat.com/ubi9/ubi
     steps:
-      - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  centos-stream-9:
-    name: CentOS Stream 9
-    runs-on: ubuntu-latest
-    container:
-      image: quay.io/centos/centos:stream9
-    steps:
-      - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  centos-stream-10:
-    name: CentOS Stream 10
-    runs-on: ubuntu-latest
-    container:
-      image: quay.io/centos/centos:stream10
-    steps:
-      - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  fedora-41:
-    name: Fedora 41
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:41
-    steps:
-      - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  fedora-42:
-    name: Fedora 42
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:42
-    steps:
-      - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  fedora-43:
-    name: Fedora 43
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:43
-    steps:
-      - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          echo | bash /tmp/install-docker.sh
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
+      - uses: actions/checkout@v4
+      - name: Test prepare-airgap.sh --dry-run (Ubuntu noble amd64)
+        run: bash prepare-airgap.sh --os ubuntu --os-version noble --arch amd64 --dry-run
+      - name: Test prepare-airgap.sh --dry-run (Debian bookworm arm64)
+        run: bash prepare-airgap.sh --os debian --os-version bookworm --arch arm64 --dry-run
+      - name: Test prepare-airgap.sh --dry-run (Fedora 42 x86_64)
+        run: bash prepare-airgap.sh --os fedora --os-version 42 --arch x86_64 --dry-run

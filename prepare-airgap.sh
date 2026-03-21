@@ -136,7 +136,10 @@ main() {
             log "Dry run completed successfully!"
             rmdir "$dest_dir" 2>/dev/null || true
         else
+            log "Generating SHA256 checksums…"
+            (cd "$dest_dir" && sha256sum -- *."${ext}" > checksums.sha256)
             log "Completed! All files downloaded to ./${dest_dir}"
+            log "Checksums saved to ./${dest_dir}/checksums.sha256"
         fi
     fi
 }
