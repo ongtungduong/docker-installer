@@ -9,7 +9,7 @@ on:
 
 env:
   SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/install-docker.sh
-  AIRGAP_SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/prepare-airgap.sh
+  AIRGAP_SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/install-docker-airgap.sh
 
 jobs:
   apt-distros:
@@ -33,7 +33,7 @@ jobs:
       - name: Download scripts
         run: |
           curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/prepare-airgap.sh
+          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/install-docker-airgap.sh
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
@@ -43,7 +43,7 @@ jobs:
       - name: Verify Docker Compose version
         run: docker compose version
       - name: Test airgap prepare (dry-run)
-        run: bash /tmp/prepare-airgap.sh --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch amd64 --dry-run
+        run: bash /tmp/install-docker-airgap.sh --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch amd64 --dry-run
 
   dnf-distros:
     name: ${{ matrix.name }}
@@ -67,7 +67,7 @@ jobs:
       - name: Download scripts
         run: |
           curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/prepare-airgap.sh
+          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/install-docker-airgap.sh
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
@@ -77,4 +77,4 @@ jobs:
       - name: Verify Docker Compose version
         run: docker compose version
       - name: Test airgap prepare (dry-run)
-        run: bash /tmp/prepare-airgap.sh --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch x86_64 --dry-run
+        run: bash /tmp/install-docker-airgap.sh --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch x86_64 --dry-run

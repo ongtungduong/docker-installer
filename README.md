@@ -5,8 +5,7 @@ A single-command bash script to install the latest Docker Engine and Docker Comp
 ## Features
 
 - **Online Installation (`install-docker.sh`)**: Installs Docker directly via the official APT or DNF repositories.
-- **Offline/Airgap Preparation (`prepare-airgap.sh`)**: Downloads the `.deb` or `.rpm` binaries for target architectures and operating systems so they can be securely moved to airgapped environments.
-- **Offline/Airgap Installation (`install-airgap.sh`)**: Installs Docker from previously downloaded packages with checksum verification.
+- **Airgap/Offline (`install-docker-airgap.sh`)**: Downloads packages for offline use (`--prepare`) or installs from previously downloaded packages.
 
 ## Prerequisites
 
@@ -54,16 +53,16 @@ bash install-docker.sh --upgrade
 | **CentOS Stream**   | 9, 10                                     | dnf             |
 | **Fedora**          | 43, 42, 41                                | dnf             |
 
-### 2. Prepare Files for Airgapped Installation (Offline)
+### 2. Airgapped Installation (Offline)
 
-If your target server has no internet access, you can download the required Docker packages from any internet-connected machine (even a Mac) by running:
+#### Step 1: Prepare packages (on an internet-connected machine)
 
 ```bash
 # Auto-detect the current Linux machine and download packages
-./prepare-airgap.sh
+./install-docker-airgap.sh --prepare
 
 # Or, explicitly define the target OS, version, and architecture (e.g., download Ubuntu 24.04 packages from a Mac)
-./prepare-airgap.sh --os ubuntu --os-version noble --arch amd64
+./install-docker-airgap.sh --prepare --os ubuntu --os-version noble --arch amd64
 ```
 
 The script generates a `checksums.sha256` file alongside the downloaded packages for integrity verification.
@@ -79,12 +78,12 @@ The script generates a `checksums.sha256` file alongside the downloaded packages
 | **CentOS Stream**   | x86_64, aarch64       |
 | **Fedora**          | x86_64, aarch64       |
 
-### 3. Install from Airgapped Packages
+#### Step 2: Install on the airgapped server
 
-On the airgapped server, copy the downloaded package directory and run:
+Copy the downloaded package directory to the target server, then run:
 
 ```bash
-sudo bash install-airgap.sh ./docker-ubuntu-noble-amd64-20260320
+sudo bash install-docker-airgap.sh ./docker-ubuntu-noble-amd64-20260320
 ```
 
 The script will:
