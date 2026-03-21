@@ -3,7 +3,7 @@
 
 # ── Constants ────────────────────────────────────────────────────────
 readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
-readonly GPG_FINGERPRINT="060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35"
+readonly GPG_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
 
 # ── Global flags ─────────────────────────────────────────────────────
 ASSUME_YES=false

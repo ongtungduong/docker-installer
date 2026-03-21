@@ -9,6 +9,7 @@ on:
 
 env:
   SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/install-docker.sh
+  AIRGAP_SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/prepare-airgap.sh
 
 jobs:
   apt-distros:
@@ -20,17 +21,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "Ubuntu 22.04",  image: "ubuntu:22.04" }
-          - { name: "Ubuntu 24.04",  image: "ubuntu:24.04" }
-          - { name: "Ubuntu 25.10",  image: "ubuntu:25.10" }
-          - { name: "Debian 11",     image: "debian:11" }
-          - { name: "Debian 12",     image: "debian:12" }
-          - { name: "Debian 13",     image: "debian:13" }
+          - { name: "Ubuntu 22.04",  image: "ubuntu:22.04",  os: ubuntu, version: jammy }
+          - { name: "Ubuntu 24.04",  image: "ubuntu:24.04",  os: ubuntu, version: noble }
+          - { name: "Ubuntu 25.10",  image: "ubuntu:25.10",  os: ubuntu, version: plucky }
+          - { name: "Debian 11",     image: "debian:11",     os: debian, version: bullseye }
+          - { name: "Debian 12",     image: "debian:12",     os: debian, version: bookworm }
+          - { name: "Debian 13",     image: "debian:13",     os: debian, version: trixie }
     steps:
       - name: Install curl
         run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+      - name: Download scripts
+        run: |
+          curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/prepare-airgap.sh
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
@@ -39,6 +42,8 @@ jobs:
         run: docker --version
       - name: Verify Docker Compose version
         run: docker compose version
+      - name: Test airgap prepare (dry-run)
+        run: bash /tmp/prepare-airgap.sh --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch amd64 --dry-run
 
   dnf-distros:
     name: ${{ matrix.name }}
@@ -49,18 +54,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "RHEL 8",            image: "registry.access.redhat.com/ubi8/ubi" }
-          - { name: "RHEL 9",            image: "registry.access.redhat.com/ubi9/ubi" }
-          - { name: "CentOS Stream 9",   image: "quay.io/centos/centos:stream9" }
-          - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10" }
-          - { name: "Fedora 41",         image: "fedora:41" }
-          - { name: "Fedora 42",         image: "fedora:42" }
-          - { name: "Fedora 43",         image: "fedora:43" }
+          - { name: "RHEL 8",            image: "registry.access.redhat.com/ubi8/ubi",    os: rhel,   version: "8" }
+          - { name: "RHEL 9",            image: "registry.access.redhat.com/ubi9/ubi",    os: rhel,   version: "9" }
+          - { name: "CentOS Stream 9",   image: "quay.io/centos/centos:stream9",          os: centos, version: "9" }
+          - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10",         os: centos, version: "10" }
+          - { name: "Fedora 41",         image: "fedora:41",                              os: fedora, version: "41" }
+          - { name: "Fedora 42",         image: "fedora:42",                              os: fedora, version: "42" }
+          - { name: "Fedora 43",         image: "fedora:43",                              os: fedora, version: "43" }
     steps:
       - name: Install curl
-        run: dnf install -y curl sudo
-      - name: Download script
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+        run: dnf install -y --allowerasing curl sudo
+      - name: Download scripts
+        run: |
+          curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/prepare-airgap.sh
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
@@ -69,15 +76,5 @@ jobs:
         run: docker --version
       - name: Verify Docker Compose version
         run: docker compose version
-
-  test-airgap-prepare:
-    name: Airgap Prepare (dry-run)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test prepare-airgap.sh --dry-run (Ubuntu noble amd64)
-        run: bash prepare-airgap.sh --os ubuntu --os-version noble --arch amd64 --dry-run
-      - name: Test prepare-airgap.sh --dry-run (Debian bookworm arm64)
-        run: bash prepare-airgap.sh --os debian --os-version bookworm --arch arm64 --dry-run
-      - name: Test prepare-airgap.sh --dry-run (Fedora 42 x86_64)
-        run: bash prepare-airgap.sh --os fedora --os-version 42 --arch x86_64 --dry-run
+      - name: Test airgap prepare (dry-run)
+        run: bash /tmp/prepare-airgap.sh --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch x86_64 --dry-run
