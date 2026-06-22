@@ -33,7 +33,7 @@ Provide fast, reliable shell-script tooling to install Docker Engine and depende
 | Criterion | Measure |
 |-----------|---------|
 | Installation speed | <90 seconds on modern hardware |
-| Script size | <250 LOC per script (keep it readable) |
+| Script size | <450 LOC for unified script (keep it readable) |
 | GPG/checksum verification | 100% success on valid packages, 100% failure on corrupted/tampered |
 | Distro support | All 13 tested distros pass CI matrix before merge |
 | Error recovery | Cleanup trap removes partial config on failure; no orphaned repos |
@@ -41,20 +41,15 @@ Provide fast, reliable shell-script tooling to install Docker Engine and depende
 
 ## Architecture Overview
 
-### Two-Script Model
+### Single-Script, Multi-Mode Model
 
-**`install-docker.sh`** (217 LOC)
-- Online installer using official Docker repositories
-- Detects OS (`/etc/os-release`), selects apt or dnf
-- Adds Docker GPG key, configures repository, installs packages
-- Manages systemd services and user group permissions
-- Supports `--yes`, `--version`, `--upgrade` flags
-
-**`install-docker-airgap.sh`** (209 LOC)
-- Dual-mode: prepare (download) and install (offline)
-- **Prepare mode** (`--prepare`): Auto-detects or accepts OS/version/arch, downloads packages, generates SHA256 checksums
-- **Install mode** (pass dir path): Verifies checksums, detects `.deb` or `.rpm`, installs via `dpkg` or `rpm`
-- Dry-run support for non-destructive planning
+**`install-docker.sh`** (428 LOC)
+- Unified installer supporting both online and offline deployment
+- **Online mode** (default): Uses official Docker repositories, detects OS (`/etc/os-release`), selects apt or dnf, adds Docker GPG key, configures repository, installs packages, manages systemd services and user group permissions. Supports `--yes`, `--version`, `--upgrade` flags.
+- **Airgap mode** (`--airgap` flag): Dual-mode operational pattern:
+  - **Prepare** (`--airgap --prepare`): Auto-detects or accepts OS/version/arch, downloads packages, generates SHA256 checksums
+  - **Install** (`--airgap <dir>`): Verifies checksums, detects `.deb` or `.rpm`, installs via `dpkg` or `rpm`
+  - Dry-run support (`--airgap --prepare --dry-run`) for non-destructive planning
 
 ### Package List
 

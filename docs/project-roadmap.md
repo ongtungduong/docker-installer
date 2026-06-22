@@ -121,8 +121,8 @@
 | Metric | Target | Current |
 |---|---|---|
 | **Distro coverage** | Top 13 Linux distros across apt/dnf | 13/13 ✓ |
-| **Test automation** | 100% CI pass before merge | 26 jobs (13 distros × 2 modes) ✓ |
-| **Script size** | <250 LOC per script | ~217 LOC, ~209 LOC ✓ |
+| **Test automation** | 100% CI pass before merge | 28 jobs (13 distros × 2 modes + 2 real airgap installs) ✓ |
+| **Script size** | <500 LOC single script | ~428 LOC (unified online + airgap) ✓ |
 | **Install speed** | <90 seconds on modern hardware | ~30–45 seconds (verified) ✓ |
 | **Security** | GPG verification + checksum validation | apt ✓, airgap ✓, dnf → pending |
 | **User adoption** | Steady GitHub stars, low issue rate | Tracking |

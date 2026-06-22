@@ -2,12 +2,11 @@
 
 ## File Manifest
 
-### Root Scripts
+### Root Script
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `install-docker.sh` | 217 | Online installer via official Docker repositories |
-| `install-docker-airgap.sh` | 209 | Offline installer (prepare + install modes) |
+| `install-docker.sh` | 428 | Unified installer: online mode (default) + airgap mode (`--airgap` flag) with prepare/install subcommands |
 
 ### CI & Documentation
 
@@ -85,39 +84,30 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 
 ---
 
-## install-docker-airgap.sh — Offline Installer
+## install-docker.sh — Airgap Mode Functions
 
-### Constants
+### Airgap-Specific Functions
 
-```bash
-readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
-```
+| Function | Role |
+|----------|------|
+| `run_online()` | Routes online installation (default behavior) |
+| `run_airgap()` | Detects airgap subcommand and routes to prepare or install |
+| `do_prepare()` | Download packages from Docker repos, generate checksums |
+| `do_install()` | Verify checksums, auto-detect deb/rpm, install packages |
 
-(No GPG_FINGERPRINT constant; DNF repos pre-verified by Docker's official servers)
+### do_prepare() Workflow (Airgap Mode)
 
-### Functions
-
-| Function | Lines | Role |
-|----------|-------|------|
-| `log()`, `warn()`, `err()`, `die()` | 8–11 | Same as online script |
-| `usage()` | 13–36 | Dual-mode help: prepare and install examples |
-| `do_prepare()` | 39–150 | Download packages from Docker repos, generate checksums |
-| `do_install()` | 153–195 | Verify checksums, auto-detect deb/rpm, install packages |
-| `main()` | 198–209 | Route --prepare or file path to appropriate handler |
-
-### do_prepare() Workflow
-
-**Input**: `--os`, `--os-version`, `--arch`, `--dry-run` (all optional)
+**Input**: `--airgap --prepare [--os <os>] [--os-version <v>] [--arch <a>] [--dry-run]`
 
 1. **Auto-detect** (if missing):
    - Read `/etc/os-release` for ID, UBUNTU_CODENAME, VERSION_CODENAME, or VERSION_ID
    - Fallback to `uname -m` for architecture
 2. **Validate**: Ensure OS and version provided or auto-detected
-3. **Architecture mapping** (lines 82–89):
+3. **Architecture mapping**:
    - `x86_64` ↔ `amd64` (dpkg) vs `x86_64` (rpm)
    - `aarch64` ↔ `arm64` (dpkg) vs `aarch64` (rpm)
    - `armv[67]*` → `armhf` (dpkg, Raspberry Pi)
-4. **Construct base URL** (lines 91–102):
+4. **Construct base URL**:
    - apt: `https://download.docker.com/linux/{OS}/dists/{VERSION}/pool/stable/{ARCH}/`
    - dnf: `https://download.docker.com/linux/{OS}/{VERSION}/{ARCH}/stable/Packages/`
 5. **Create output directory**: `docker-{OS}-{VERSION}-{ARCH}-{YYYYMMDD}`
@@ -125,9 +115,9 @@ readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-pl
 7. **Download each package** or log [DRY RUN] if `--dry-run`
 8. **Generate SHA256 checksums**: `sha256sum -- *.deb` or `*.rpm` → `checksums.sha256`
 
-### do_install() Workflow
+### do_install() Workflow (Airgap Mode)
 
-**Input**: Path to directory from `--prepare`
+**Input**: `install-docker.sh --airgap <package-dir>`
 
 1. **Verify checksums** (if `checksums.sha256` exists):
    - `cd $PKG_DIR && sha256sum -c checksums.sha256`
@@ -139,14 +129,15 @@ readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-pl
    - Else die (no packages found)
 3. **Install packages**:
    - **dpkg path**: `sudo dpkg -i *.deb`; on error, `sudo apt-get install -f -y` (auto-fix deps)
-   - **rpm path**: `sudo rpm -Uvh --force *.rpm` (no dep auto-fix)
+   - **rpm path**: `sudo dnf install -y *.rpm` when dnf is present (resolves deps against installed packages); falls back to `sudo rpm -Uvh --force *.rpm` otherwise
 4. **Enable services**: `sudo systemctl enable --now docker containerd`
 5. **Configure docker group** (non-root)
 
-### Entry Points
+### Entry Point & Routing
 
-- `main "$@"` at line 209
-- Calls either `do_prepare "$@"` or `do_install "$1"` based on first arg
+- `main "$@"` pre-scans for `--airgap` flag early
+- If `--airgap` found: routes to `run_airgap()` which dispatches to `do_prepare()` or `do_install()`
+- If no `--airgap`: routes to `run_online()` for standard installation
 
 ### Key Design Decisions
 
@@ -154,7 +145,7 @@ readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-pl
 - **Force flag for rpm**: `--force` allows reinstalling/upgrading without explicit uninstall
 - **dpkg auto-fix**: APT's `-f` flag resolves missing dependencies post-install
 - **Exit on first checksum fail**: Security-first: corrupted == untrusted
-- **set -euo pipefail**: Fail fast on any command error or unset variable
+- **set -euo pipefail disabled**: Online path relies on explicit `||` handlers; airgap path uses explicit error checks
 
 ---
 
@@ -171,11 +162,11 @@ readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-pl
 ### Test Steps
 
 1. Install curl, sudo (base image may lack them)
-2. Download both scripts from current commit SHA
+2. Download script from current commit SHA
 3. Mock systemctl (return 0) so services "enable" in container
 4. Run `install-docker.sh --yes`
 5. Verify `docker --version` and `docker compose version`
-6. Run `install-docker-airgap.sh --prepare --dry-run` for architecture verification
+6. Run `install-docker.sh --airgap --prepare --dry-run` for architecture verification
 
 ### Why Mock systemctl?
 
@@ -186,7 +177,7 @@ Container images lack systemd; mocking systemctl prevents service enable failure
 ## Data Flow Diagram
 
 ```
-Online:
+Online (default):
   [User curl] → install-docker.sh --yes
                     ↓
            detect_os → {apt, dnf}
@@ -200,7 +191,7 @@ Online:
            systemctl enable
 
 Airgap Prepare:
-  [User on internet machine] → install-docker-airgap.sh --prepare
+  [User on internet machine] → install-docker.sh --airgap --prepare
                                     ↓
                           auto-detect or explicit OS/arch
                                     ↓
@@ -213,7 +204,7 @@ Airgap Prepare:
                           [Transfer dir to offline machine]
 
 Airgap Install:
-  [User on offline machine] → install-docker-airgap.sh ./docker-*-*-*
+  [User on offline machine] → install-docker.sh --airgap ./docker-*-*-*
                                     ↓
                           verify checksums.sha256
                                     ↓
@@ -239,8 +230,9 @@ Airgap Install:
 
 ## Testing Checklist
 
-- [ ] All 13 distros pass online install
-- [ ] All 13 distros pass airgap dry-run prepare
+- [ ] All 13 distros pass online install (`install-docker.sh --yes`)
+- [ ] All 13 distros pass airgap dry-run prepare (`install-docker.sh --airgap --prepare --dry-run`)
+- [ ] All 13 distros pass airgap real prepare + install (new smoke test)
 - [ ] GPG fingerprint verified (apt only, requires gpg CLI)
 - [ ] Checksum verification catches corrupted packages
 - [ ] Cleanup trap removes partial config on failure
@@ -248,4 +240,4 @@ Airgap Install:
 - [ ] systemctl enable works (or gracefully degrades in containers)
 - [ ] `--upgrade` flag allows re-running on existing Docker
 - [ ] `--version` pins specific Docker release
-- [ ] `--prepare --dry-run` lists files without downloading
+- [ ] `--airgap --prepare --dry-run` lists files without downloading

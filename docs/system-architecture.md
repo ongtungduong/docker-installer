@@ -2,23 +2,22 @@
 
 ## High-Level Design
 
-The Docker Installer uses a **two-script, two-mode architecture** to handle online and offline deployment scenarios with minimal code duplication while maintaining strict security boundaries.
+The Docker Installer uses a **single-script, multi-mode architecture** to handle online and offline deployment scenarios with shared logging, error handling, and setup routines while maintaining strict separation between modes.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     User Workflow                               │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  Online:                   Offline:                            │
-│  ┌──────────────┐          ┌──────────────┐                   │
-│  │ install-     │          │ install-     │ --prepare         │
-│  │ docker.sh    │          │ docker-      │ ──────────>       │
-│  │              │          │ airgap.sh    │  [Download PKGs]  │
-│  └──────────────┘          └──────────────┘  + checksums      │
-│    ↓                          ↓                                 │
-│  [apt/dnf repo]          [Copy dir to server]                  │
-│  [Install + enable]      install-docker-airgap.sh <dir>       │
-│                             [Verify + install]                │
+│  Online (default):         Offline (--airgap):                │
+│  ┌──────────────────┐      ┌──────────────────┐               │
+│  │ install-docker.sh│      │ install-docker.sh│ --airgap      │
+│  │                  │      │                  │ --prepare     │
+│  │ [no flag]        │      │                  │ ──────────>   │
+│  └──────────────────┘      └──────────────────┘ [Download]    │
+│    ↓                          ↓ [Copy dir]                     │
+│  [apt/dnf repo]          install-docker.sh --airgap <dir>     │
+│  [Install + enable]         [Verify + install]                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -92,21 +91,25 @@ DNF path defers verification to user manual prompt.
 
 ---
 
-## install-docker-airgap.sh — Offline Installer
+## install-docker.sh Airgap Mode — Offline Installer
 
-### Dual-Mode Architecture
+### Airgap Mode Routing
 
 ```
 main(args)
-  ├─ No args → usage + die
-  ├─ --prepare → do_prepare(opts)
-  ├─ -h/--help → usage
-  └─ $path → do_install($path)
+  ├─ Pre-scan for --airgap flag
+  │   ├─ If --airgap present → run_airgap()
+  │   │   ├─ Check for --prepare → do_prepare(opts)
+  │   │   ├─ Check for -h/--help → usage
+  │   │   └─ $path (directory) → do_install($path)
+  │   └─ Else → run_online() [default]
 ```
 
 ### Prepare Mode (do_prepare)
 
 **Purpose**: Download packages to a timestamped directory on an internet-connected machine.
+
+**CLI**: `install-docker.sh --airgap --prepare [--os <os>] [--os-version <v>] [--arch <a>] [--dry-run]`
 
 ```
 do_prepare(--os, --os-version, --arch, --dry-run)
@@ -149,6 +152,8 @@ do_prepare(--os, --os-version, --arch, --dry-run)
 
 **Purpose**: Install Docker from pre-downloaded packages (offline).
 
+**CLI**: `install-docker.sh --airgap <package-dir>`
+
 ```
 do_install($pkg_dir)
   │
@@ -169,7 +174,8 @@ do_install($pkg_dir)
   │   │   └─ Fallback: sudo apt-get install -f -y (fix broken deps)
   │   │
   │   └─ .rpm path:
-  │       └─ sudo rpm -Uvh --force $pkg_dir/*.rpm
+  │       ├─ dnf present: sudo dnf install -y $pkg_dir/*.rpm (resolves deps)
+  │       └─ Fallback:    sudo rpm -Uvh --force $pkg_dir/*.rpm
   │
   ├─ systemctl enable --now docker containerd
   │
@@ -265,18 +271,24 @@ Exit: 0 (cleanup trap skips on success)
 
 **File**: `.github/workflows/test-install.yml`
 
-| Stage | Count | Distributions |
-|-------|-------|---|
-| **apt-distros** | 6 | Ubuntu 22.04, 24.04, 25.10 · Debian 11, 12, 13 |
-| **dnf-distros** | 7 | RHEL 8, 9 · CentOS Stream 9, 10 · Fedora 41, 42, 43 |
-| **Total** | 13 | 2 modes × 13 distros = 26 job runs |
+| Stage | Count | Coverage |
+|-------|-------|----------|
+| **apt-distros** (online + dry-run prepare) | 6 | Ubuntu 22.04, 24.04, 25.10 · Debian 11, 12, 13 |
+| **dnf-distros** (online + dry-run prepare) | 7 | RHEL 8, 9 · CentOS Stream 9, 10 · Fedora 41, 42, 43 |
+| **airgap-smoke** (real prepare + install) | 2 | Ubuntu noble, Fedora 42 |
+| **Total** | 15 | 26 standard + 2 smoke = 28 job runs |
 
-**Each job**:
+**Standard jobs** (13 distros each):
 1. Install curl + sudo
-2. Download both scripts
+2. Download script from current commit
 3. Mock systemctl (containers don't have it)
-4. Run `install-docker.sh --yes`
+4. Run `install-docker.sh --yes` (online mode)
 5. Verify `docker --version` and `docker compose version`
-6. Test `install-docker-airgap.sh --prepare --dry-run` for that OS/arch
+6. Test `install-docker.sh --airgap --prepare --dry-run` (airgap dry-run)
+
+**Airgap smoke jobs** (2 distros for real end-to-end test):
+1. Run full prepare: `install-docker.sh --airgap --prepare`
+2. Run full install: `install-docker.sh --airgap ./docker-*-*-*`
+3. Verify `docker --version` and `docker compose version`
 
 **Fail-fast**: false (all jobs run even if one fails, to expose all distro issues)

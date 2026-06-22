@@ -14,7 +14,6 @@ Before committing, validate bash syntax:
 
 ```bash
 bash -n install-docker.sh
-bash -n install-docker-airgap.sh
 ```
 
 No output = syntax OK. Any errors will be printed.
@@ -73,16 +72,16 @@ sudo dnf remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin do
 
 ```bash
 # Auto-detect current OS
-bash install-docker-airgap.sh --prepare
+bash install-docker.sh --airgap --prepare
 
 # Explicit OS/version/arch
-bash install-docker-airgap.sh --prepare --os ubuntu --os-version noble --arch amd64
+bash install-docker.sh --airgap --prepare --os ubuntu --os-version noble --arch amd64
 
 # Dry-run (show what would download, don't actually download)
-bash install-docker-airgap.sh --prepare --os fedora --os-version 42 --arch x86_64 --dry-run
+bash install-docker.sh --airgap --prepare --os fedora --os-version 42 --arch x86_64 --dry-run
 
 # Prepare for Raspberry Pi (armhf)
-bash install-docker-airgap.sh --prepare --os raspbian --os-version bookworm --arch armhf
+bash install-docker.sh --airgap --prepare --os raspbian --os-version bookworm --arch armhf
 ```
 
 **Expected output**:
@@ -105,7 +104,7 @@ bash install-docker-airgap.sh --prepare --os raspbian --os-version bookworm --ar
 # scp -r docker-ubuntu-noble-amd64-20260322 user@airgap-host:/tmp/
 
 # On the airgap host, install:
-sudo bash install-docker-airgap.sh /tmp/docker-ubuntu-noble-amd64-20260322
+sudo bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 ```
 
 **Expected output**:
@@ -133,7 +132,7 @@ sudo bash install-docker-airgap.sh /tmp/docker-ubuntu-noble-amd64-20260322
 
 ### Matrix
 
-The workflow tests both scripts across 13 Linux distributions in two stages:
+The workflow tests the unified script across 13 Linux distributions with both online and airgap modes:
 
 #### Stage 1: APT Distros (6 jobs)
 
@@ -168,12 +167,10 @@ The workflow tests both scripts across 13 Linux distributions in two stages:
    dnf install -y --allowerasing curl sudo             # DNF
    ```
 
-2. **Download both scripts**:
+2. **Download script**:
    ```bash
    curl -sSL https://raw.githubusercontent.com/[owner]/docker-installer/[commit]/install-docker.sh \
      -o /tmp/install-docker.sh
-   curl -sSL https://raw.githubusercontent.com/[owner]/docker-installer/[commit]/install-docker-airgap.sh \
-     -o /tmp/install-docker-airgap.sh
    ```
 
 3. **Mock systemctl** (containers don't have systemd):
@@ -195,7 +192,7 @@ The workflow tests both scripts across 13 Linux distributions in two stages:
 
 6. **Test airgap prepare (dry-run)**:
    ```bash
-   bash /tmp/install-docker-airgap.sh --prepare \
+   bash /tmp/install-docker.sh --airgap --prepare \
      --os [matrix.os] \
      --os-version [matrix.version] \
      --arch [amd64 for APT, x86_64 for DNF] \
@@ -206,8 +203,7 @@ The workflow tests both scripts across 13 Linux distributions in two stages:
 
 | Variable | Value | Used For |
 |----------|-------|----------|
-| `SCRIPT_URL` | `https://raw.githubusercontent.com/${{github.repository}}/${{github.sha}}/install-docker.sh` | Download latest script from current branch/commit |
-| `AIRGAP_SCRIPT_URL` | Similar for airgap script | Download latest airgap script |
+| `SCRIPT_URL` | `https://raw.githubusercontent.com/${{github.repository}}/${{github.sha}}/install-docker.sh` | Download latest unified script from current branch/commit |
 
 This ensures every CI run tests the *current* code changes, not main branch code.
 
@@ -241,6 +237,9 @@ docker run -it -v $PWD:/work fedora:42 bash
 cd /work
 dnf install -y curl sudo
 bash install-docker.sh --help
+
+# Test airgap prepare
+bash install-docker.sh --airgap --prepare --dry-run
 ```
 
 #### Option 2: Act (GitHub Actions locally)
@@ -261,10 +260,9 @@ For quick validation without full CI:
 ```bash
 # Syntax check
 bash -n install-docker.sh
-bash -n install-docker-airgap.sh
 
 # Dry-run prepare
-bash install-docker-airgap.sh --prepare --dry-run
+bash install-docker.sh --airgap --prepare --dry-run
 
 # Run on current OS (requires sudo)
 # bash install-docker.sh --yes
@@ -318,7 +316,7 @@ git push origin [branch]
 
 ### Release Flow
 
-1. **Create PR** with changes to `install-docker.sh` or `install-docker-airgap.sh`
+1. **Create PR** with changes to `install-docker.sh`
 2. **CI validates** all 13 distros (push to PR triggers workflow)
 3. **Code review** + approval
 4. **Merge to main** (fast-forward or squash merge)
@@ -378,15 +376,16 @@ Typical install time (network-dependent):
 ### Adding New Distro Support
 
 1. **Identify package manager** (apt, dnf, zypper, pacman, etc.)
-2. **Add branch to `detect_os()` and install functions**
-3. **Add CI job** (new matrix entry in `.github/workflows/test-install.yml`)
-4. **Test locally** in container for that distro
-5. **Merge when all CI jobs pass**
+2. **Add branch to `detect_os()` and install functions in `run_online()`**
+3. **Add airgap logic to `do_prepare()` if needed**
+4. **Add CI job** (new matrix entry in `.github/workflows/test-install.yml`)
+5. **Test locally** in container for that distro
+6. **Merge when all CI jobs pass**
 
 Example (hypothetical zypper/SUSE):
 
 ```bash
-# In install-docker.sh
+# In install-docker.sh run_online()
 case "$os" in
     ubuntu|debian|raspbian) install_docker_apt "$os" ;;
     rhel|centos|fedora)     install_docker_dnf "$os" ;;
@@ -394,7 +393,7 @@ case "$os" in
     *) die "Unsupported OS: $os" ;;
 esac
 
-# In install-docker-airgap.sh prepare mode
+# In install-docker.sh do_prepare() airgap mode
 case "$target_os" in
     ubuntu|debian|raspbian)
         ext="deb"

@@ -1,6 +1,6 @@
 # Docker Installer for Linux
 
-A single-command bash script to install the latest Docker Engine and Docker Compose on Linux servers, with support for both online and airgap (offline) deployments.
+A single bash script (`install-docker.sh`) to install the latest Docker Engine and Docker Compose on Linux servers, with support for both online and airgap (offline) deployments via the `--airgap` flag.
 
 ## Quick Start
 
@@ -10,14 +10,14 @@ curl -fsSL https://raw.githubusercontent.com/ongtungduong/docker-installer/main/
 ```
 
 **Airgap (offline)**:
-1. On internet-connected machine: `bash install-docker-airgap.sh --prepare`
+1. On internet-connected machine: `bash install-docker.sh --airgap --prepare`
 2. Transfer directory to offline server
-3. Run: `bash install-docker-airgap.sh ./docker-*`
+3. Run: `bash install-docker.sh --airgap ./docker-*`
 
 ## Features
 
-- **Online Installation (`install-docker.sh`)**: Installs Docker directly via the official APT or DNF repositories.
-- **Airgap/Offline (`install-docker-airgap.sh`)**: Downloads packages for offline use (`--prepare`) or installs from previously downloaded packages.
+- **Online Installation (default)**: Installs Docker directly via the official APT or DNF repositories.
+- **Airgap/Offline (`--airgap`)**: Downloads packages for offline use (`--airgap --prepare`) or installs from previously downloaded packages (`--airgap <dir>`).
 - **GPG Verification**: Validates Docker's official GPG fingerprint on apt-based systems.
 - **SHA256 Checksums**: Integrity checking for offline packages.
 - **Automated Testing**: CI matrix validates on 13 Linux distributions.
@@ -71,7 +71,7 @@ bash install-docker.sh --upgrade --yes
 | **CentOS Stream**   | 9, 10                                     | x86_64, aarch64 | dnf            |
 | **Fedora**          | 41, 42, 43                                | x86_64, aarch64 | dnf            |
 
-**Total CI coverage**: 13 distributions × 2 modes = 26 automated tests before each release.
+**Total CI coverage**: 13 distributions × (online install + airgap prepare) = 26 tests, plus 2 real end-to-end airgap installs (Ubuntu + Fedora) = 28 automated tests before each release.
 
 ### 2. Airgapped Installation (Offline)
 
@@ -81,13 +81,13 @@ On an internet-connected machine, download Docker packages:
 
 ```bash
 # Auto-detect current OS and download packages
-bash install-docker-airgap.sh --prepare
+bash install-docker.sh --airgap --prepare
 
 # Or specify target OS, version, and architecture explicitly
-bash install-docker-airgap.sh --prepare --os ubuntu --os-version noble --arch amd64
+bash install-docker.sh --airgap --prepare --os ubuntu --os-version noble --arch amd64
 
 # Preview what would be downloaded (dry-run)
-bash install-docker-airgap.sh --prepare --os fedora --os-version 42 --arch x86_64 --dry-run
+bash install-docker.sh --airgap --prepare --os fedora --os-version 42 --arch x86_64 --dry-run
 ```
 
 **Output**: A directory like `docker-ubuntu-noble-amd64-20260322/` containing:
@@ -107,7 +107,7 @@ scp -r docker-ubuntu-noble-amd64-20260322/ user@offline-server:/tmp/
 On the airgapped server:
 
 ```bash
-bash install-docker-airgap.sh /tmp/docker-ubuntu-noble-amd64-20260322
+bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 ```
 
 The script will:
@@ -116,11 +116,14 @@ The script will:
 3. Enable Docker & containerd services to start on boot.
 4. Configure docker group for non-root access.
 
-#### Prepare Mode Flags
+#### Airgap Mode Flags
+
+Pass `--airgap` first, then either `--prepare` (with the flags below) to download, or a package directory to install offline.
 
 | Flag | Description | Example |
 | ---- | ----------- | ------- |
-| `--prepare` | Download mode. | `--prepare` |
+| `--airgap` | Activate airgap mode (prepend to all airgap commands). | `--airgap` |
+| `--prepare` | Download mode (used with `--airgap`). | `--airgap --prepare` |
 | `--os <os>` | Target OS: ubuntu, debian, raspbian, rhel, centos, fedora | `--os ubuntu` |
 | `--os-version <ver>` | OS version/codename: noble (24.04), 9 (RHEL 9), 42 (Fedora 42) | `--os-version noble` |
 | `--arch <arch>` | Architecture: amd64, arm64, x86_64, aarch64, armhf | `--arch amd64` |
@@ -166,7 +169,7 @@ For more information:
 | **"Docker is already installed"** | Use `--upgrade` flag to update existing installation, or uninstall first: `apt remove docker-ce` or `dnf remove docker-ce` |
 | **Permission denied on docker commands** | User not in docker group; log out and back in, or `newgrp docker` |
 | **"gpg not found" warning (apt)** | GPG verification skipped but repo trusted; safe to continue |
-| **Checksum mismatch (airgap)** | Package corrupted during transfer; re-download via `--prepare` |
+| **Checksum mismatch (airgap)** | Package corrupted during transfer; re-download via `--airgap --prepare` |
 | **systemctl not available (containers)** | Expected in CI/Docker containers; services won't auto-start but installation succeeds |
 
 ## Disclaimer

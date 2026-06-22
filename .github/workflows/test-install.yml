@@ -9,7 +9,6 @@ on:
 
 env:
   SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/install-docker.sh
-  AIRGAP_SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/install-docker-airgap.sh
 
 jobs:
   apt-distros:
@@ -30,10 +29,8 @@ jobs:
     steps:
       - name: Install curl
         run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download scripts
-        run: |
-          curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/install-docker-airgap.sh
+      - name: Download installer
+        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
@@ -43,7 +40,7 @@ jobs:
       - name: Verify Docker Compose version
         run: docker compose version
       - name: Test airgap prepare (dry-run)
-        run: bash /tmp/install-docker-airgap.sh --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch amd64 --dry-run
+        run: bash /tmp/install-docker.sh --airgap --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch amd64 --dry-run
 
   dnf-distros:
     name: ${{ matrix.name }}
@@ -64,10 +61,8 @@ jobs:
     steps:
       - name: Install curl
         run: dnf install -y --allowerasing curl sudo
-      - name: Download scripts
-        run: |
-          curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-          curl -sSL ${{ env.AIRGAP_SCRIPT_URL }} -o /tmp/install-docker-airgap.sh
+      - name: Download installer
+        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
@@ -77,4 +72,40 @@ jobs:
       - name: Verify Docker Compose version
         run: docker compose version
       - name: Test airgap prepare (dry-run)
-        run: bash /tmp/install-docker-airgap.sh --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch x86_64 --dry-run
+        run: bash /tmp/install-docker.sh --airgap --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch x86_64 --dry-run
+
+  # Real airgap end-to-end: download packages, then install offline from them.
+  airgap-smoke:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Airgap Ubuntu 24.04", image: "ubuntu:24.04", os: ubuntu, version: noble, arch: amd64 }
+          - { name: "Airgap Fedora 42",    image: "fedora:42",    os: fedora, version: "42", arch: x86_64 }
+    steps:
+      - name: Install prerequisites
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update -y && apt-get install -y curl sudo
+          else
+            dnf install -y --allowerasing curl sudo
+          fi
+      - name: Download installer
+        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+      - name: Airgap prepare (real download) then offline install
+        run: |
+          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
+          cd /tmp
+          bash /tmp/install-docker.sh --airgap --prepare \
+            --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch ${{ matrix.arch }}
+          dir=$(ls -d docker-*/ | head -1)
+          echo "Prepared package directory: $dir"
+          bash /tmp/install-docker.sh --airgap "/tmp/${dir}"
+      - name: Verify Docker version
+        run: docker --version
+      - name: Verify Docker Compose version
+        run: docker compose version

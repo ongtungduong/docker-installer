@@ -10,17 +10,11 @@ All scripts follow a consistent Bash style optimized for readability, portabilit
 ```bash
 # set -euo pipefail    # Disabled: allows non-interactive recovery flows
 ```
-- **Why commented out**: Allows custom cleanup trap to decide exit behavior on failure
-- **Trade-off**: Requires explicit `||` handling in critical paths
+- **Why commented out**: Online path relies on explicit `||` handlers; airgap path uses explicit error checks for separation
+- **Trade-off**: Requires explicit error handling in critical paths
+- **Benefit**: Clean mode separation and custom recovery flows
 
-**install-docker-airgap.sh**:
-```bash
-set -euo pipefail
-```
-- **Why enabled**: Cleaner prepare/install separation; fewer recovery paths needed
-- **Benefit**: Fail-fast on curl errors, missing files, etc.
-
-**Recommendation for new code**: Use `set -euo pipefail` unless you need to implement custom recovery (e.g., partial downloads).
+**Recommendation for new code**: Use explicit error handling with `||` and `if` checks unless `set -euo pipefail` is globally appropriate.
 
 ### Variable Management
 
@@ -244,7 +238,6 @@ Helps navigate 200-line scripts without scrolling infinitely.
 1. **Syntax check**:
    ```bash
    bash -n install-docker.sh
-   bash -n install-docker-airgap.sh
    ```
 
 2. **Manual test on supported OS**:
@@ -253,13 +246,16 @@ Helps navigate 200-line scripts without scrolling infinitely.
    bash install-docker.sh --help
    bash install-docker.sh --version 5:27.5.1-1
    
-   # Airgap prepare
-   bash install-docker-airgap.sh --prepare --dry-run
+   # Airgap prepare (dry-run)
+   bash install-docker.sh --airgap --prepare --dry-run
+   
+   # Airgap install (with prepared directory)
+   bash install-docker.sh --airgap ./docker-ubuntu-noble-amd64-*
    ```
 
 3. **ShellCheck (optional but recommended)**:
    ```bash
-   shellcheck install-docker.sh install-docker-airgap.sh
+   shellcheck install-docker.sh
    ```
 
 ### CI Testing
@@ -277,15 +273,15 @@ CI runs all 13 distros via `.github/workflows/test-install.yml`. Before pushing:
 ### Submitting Changes
 
 1. **Fork the repository** and create a feature branch
-2. **Edit scripts** following conventions above
-3. **Syntax check** locally: `bash -n script.sh`
+2. **Edit script** following conventions above
+3. **Syntax check** locally: `bash -n install-docker.sh`
 4. **Commit with conventional message**:
    ```
-   feat(install-docker): add --config flag for daemon.json
+   feat(install): add --config flag for daemon.json
    fix(airgap): handle symlinks in package dir
    docs: clarify airgap workflow for arm64
    ```
-5. **Push and open PR** — CI matrix will validate all 13 distros
+5. **Push and open PR** — CI matrix will validate all 13 distros + airgap smoke tests
 6. **Wait for all jobs to pass** before merge
 
 ### Code Review Focus
@@ -308,8 +304,9 @@ Reviewers check for:
 | **Subshells in loops** | Trace variable mutations; use nameref |
 | **Missing `local`** | `shellcheck` warns (via grep for globals) |
 | **Hardcoded paths** | Search for `/etc/apt`, `/etc/yum` — should be `sudo` prefixed |
-| **No cleanup on failure** | Review trap and exit codes |
-| **Different arch logic for deb vs rpm** | Compare `dpkg_arch` vs `rpm_arch` handling in both paths |
+| **No cleanup on failure** | Review trap and exit codes in online path |
+| **Different arch logic for deb vs rpm** | Compare `dpkg_arch` vs `rpm_arch` handling in `do_prepare()` |
+| **Airgap/online logic bleed** | Ensure `run_online()` and `run_airgap()` don't share state |
 
 ---
 
