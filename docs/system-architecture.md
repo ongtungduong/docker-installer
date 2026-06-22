@@ -146,7 +146,7 @@ do_prepare(--os, --os-version, --arch, --dry-run)
 
 **Example outputs**:
 - APT: `docker-ubuntu-noble-amd64-20260320/` with `*.deb` files
-- DNF: `docker-fedora-42-x86_64-20260320/` with `*.rpm` files
+- DNF: `docker-fedora-44-x86_64-20260320/` with `*.rpm` files
 
 ### Install Mode (do_install)
 
@@ -273,9 +273,9 @@ Exit: 0 (cleanup trap skips on success)
 
 | Stage | Count | Coverage |
 |-------|-------|----------|
-| **apt-distros** (online + dry-run prepare) | 6 | Ubuntu 22.04, 24.04, 25.10 · Debian 11, 12, 13 |
-| **dnf-distros** (online + dry-run prepare) | 7 | RHEL 8, 9 · CentOS Stream 9, 10 · Fedora 41, 42, 43 |
-| **airgap-smoke** (real prepare + install) | 2 | Ubuntu noble, Fedora 42 |
+| **apt-distros** (online + dry-run prepare) | 6 | Ubuntu 22.04, 24.04, 26.04 · Debian 11, 12, 13 |
+| **dnf-distros** (online + dry-run prepare) | 7 | RHEL 8, 9, 10 · CentOS Stream 9, 10 · Fedora 43, 44 |
+| **airgap-smoke** (real prepare + install) | 2 | Ubuntu noble, Fedora 43 |
 | **Total** | 15 | 26 standard + 2 smoke = 28 job runs |
 
 **Standard jobs** (13 distros each):

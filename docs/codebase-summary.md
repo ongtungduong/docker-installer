@@ -153,9 +153,9 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 
 ### test-install.yml Configuration
 
-**APT matrix** (6 jobs): Ubuntu 22.04/24.04/25.10, Debian 11/12/13
+**APT matrix** (6 jobs): Ubuntu 22.04/24.04/26.04, Debian 11/12/13
 
-**DNF matrix** (7 jobs): RHEL 8/9, CentOS Stream 9/10, Fedora 41/42/43
+**DNF matrix** (7 jobs): RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44
 
 **Total: 13 distros, 26 jobs** (apt install + dry-run prepare per distro)
 

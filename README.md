@@ -64,12 +64,12 @@ bash install-docker.sh --upgrade --yes
 
 | OS                  | Versions                                  | Architecture | Package Manager |
 | ------------------- | ----------------------------------------- | ------------ | --------------- |
-| **Ubuntu**          | 22.04 LTS, 24.04 LTS, 25.10               | amd64, arm64 | apt             |
+| **Ubuntu**          | 22.04 LTS, 24.04 LTS, 26.04 LTS           | amd64, arm64 | apt             |
 | **Debian**          | 11, 12, 13                               | amd64, arm64, armhf | apt         |
 | **Raspberry Pi OS** | 11, 12                                    | armhf        | apt             |
-| **RHEL**            | 8, 9                                      | x86_64, aarch64 | dnf            |
+| **RHEL**            | 8, 9, 10                                  | x86_64, aarch64 | dnf            |
 | **CentOS Stream**   | 9, 10                                     | x86_64, aarch64 | dnf            |
-| **Fedora**          | 41, 42, 43                                | x86_64, aarch64 | dnf            |
+| **Fedora**          | 43, 44                                    | x86_64, aarch64 | dnf            |
 
 **Total CI coverage**: 13 distributions × (online install + airgap prepare) = 26 tests, plus 2 real end-to-end airgap installs (Ubuntu + Fedora) = 28 automated tests before each release.
 
@@ -125,7 +125,7 @@ Pass `--airgap` first, then either `--prepare` (with the flags below) to downloa
 | `--airgap` | Activate airgap mode (prepend to all airgap commands). | `--airgap` |
 | `--prepare` | Download mode (used with `--airgap`). | `--airgap --prepare` |
 | `--os <os>` | Target OS: ubuntu, debian, raspbian, rhel, centos, fedora | `--os ubuntu` |
-| `--os-version <ver>` | OS version/codename: noble (24.04), 9 (RHEL 9), 42 (Fedora 42) | `--os-version noble` |
+| `--os-version <ver>` | OS version/codename: noble (24.04), resolute (26.04), 10 (RHEL 10), 44 (Fedora 44) | `--os-version noble` |
 | `--arch <arch>` | Architecture: amd64, arm64, x86_64, aarch64, armhf | `--arch amd64` |
 | `--dry-run` | Show what would download without actually downloading. | `--dry-run` |
 | `-h, --help` | Show help. | `--help` |

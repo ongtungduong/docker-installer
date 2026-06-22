@@ -74,7 +74,7 @@ Both scripts install:
 
 | Distribution | Versions | Arch |
 |---|---|---|
-| Ubuntu | 22.04 LTS, 24.04 LTS, 25.10 | amd64, arm64 |
+| Ubuntu | 22.04 LTS, 24.04 LTS, 26.04 LTS | amd64, arm64 |
 | Debian | 11 (Bullseye), 12 (Bookworm), 13 (Trixie) | amd64, armhf, arm64 |
 | Raspberry Pi OS | 11, 12 | armhf |
 
@@ -82,9 +82,9 @@ Both scripts install:
 
 | Distribution | Versions | Arch |
 |---|---|---|
-| RHEL | 8, 9 | x86_64, aarch64 |
+| RHEL | 8, 9, 10 | x86_64, aarch64 |
 | CentOS Stream | 9, 10 | x86_64, aarch64 |
-| Fedora | 41, 42, 43 | x86_64, aarch64 |
+| Fedora | 43, 44 | x86_64, aarch64 |
 
 **Total: 13 distros × 2 modes = 26 CI test jobs**
 

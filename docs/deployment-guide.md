@@ -78,7 +78,7 @@ bash install-docker.sh --airgap --prepare
 bash install-docker.sh --airgap --prepare --os ubuntu --os-version noble --arch amd64
 
 # Dry-run (show what would download, don't actually download)
-bash install-docker.sh --airgap --prepare --os fedora --os-version 42 --arch x86_64 --dry-run
+bash install-docker.sh --airgap --prepare --os fedora --os-version 44 --arch x86_64 --dry-run
 
 # Prepare for Raspberry Pi (armhf)
 bash install-docker.sh --airgap --prepare --os raspbian --os-version bookworm --arch armhf
@@ -140,7 +140,7 @@ The workflow tests the unified script across 13 Linux distributions with both on
 |--------|---------|-------|---|
 | Ubuntu | 22.04 (Jammy) | ubuntu:22.04 | apt |
 | Ubuntu | 24.04 (Noble) | ubuntu:24.04 | apt |
-| Ubuntu | 25.10 (Plucky) | ubuntu:25.10 | apt |
+| Ubuntu | 26.04 LTS (Resolute) | ubuntu:26.04 | apt |
 | Debian | 11 (Bullseye) | debian:11 | apt |
 | Debian | 12 (Bookworm) | debian:12 | apt |
 | Debian | 13 (Trixie) | debian:13 | apt |
@@ -151,11 +151,11 @@ The workflow tests the unified script across 13 Linux distributions with both on
 |--------|---------|-------|---|
 | RHEL | 8 | registry.access.redhat.com/ubi8/ubi | dnf |
 | RHEL | 9 | registry.access.redhat.com/ubi9/ubi | dnf |
+| RHEL | 10 | registry.access.redhat.com/ubi10/ubi | dnf |
 | CentOS Stream | 9 | quay.io/centos/centos:stream9 | dnf |
 | CentOS Stream | 10 | quay.io/centos/centos:stream10 | dnf |
-| Fedora | 41 | fedora:41 | dnf |
-| Fedora | 42 | fedora:42 | dnf |
 | Fedora | 43 | fedora:43 | dnf |
+| Fedora | 44 | fedora:44 | dnf |
 
 ### What Each Job Does
 
@@ -232,8 +232,8 @@ cd /work
 apt-get update && apt-get install -y curl sudo
 bash install-docker.sh --help   # Syntax check without install
 
-# Test on Fedora 42
-docker run -it -v $PWD:/work fedora:42 bash
+# Test on Fedora 44
+docker run -it -v $PWD:/work fedora:44 bash
 cd /work
 dnf install -y curl sudo
 bash install-docker.sh --help

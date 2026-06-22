@@ -22,7 +22,7 @@ jobs:
         include:
           - { name: "Ubuntu 22.04",  image: "ubuntu:22.04",  os: ubuntu, version: jammy }
           - { name: "Ubuntu 24.04",  image: "ubuntu:24.04",  os: ubuntu, version: noble }
-          - { name: "Ubuntu 25.10",  image: "ubuntu:25.10",  os: ubuntu, version: plucky }
+          - { name: "Ubuntu 26.04",  image: "ubuntu:26.04",  os: ubuntu, version: resolute }
           - { name: "Debian 11",     image: "debian:11",     os: debian, version: bullseye }
           - { name: "Debian 12",     image: "debian:12",     os: debian, version: bookworm }
           - { name: "Debian 13",     image: "debian:13",     os: debian, version: trixie }
@@ -53,11 +53,11 @@ jobs:
         include:
           - { name: "RHEL 8",            image: "registry.access.redhat.com/ubi8/ubi",    os: rhel,   version: "8" }
           - { name: "RHEL 9",            image: "registry.access.redhat.com/ubi9/ubi",    os: rhel,   version: "9" }
+          - { name: "RHEL 10",           image: "registry.access.redhat.com/ubi10/ubi",   os: rhel,   version: "10" }
           - { name: "CentOS Stream 9",   image: "quay.io/centos/centos:stream9",          os: centos, version: "9" }
           - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10",         os: centos, version: "10" }
-          - { name: "Fedora 41",         image: "fedora:41",                              os: fedora, version: "41" }
-          - { name: "Fedora 42",         image: "fedora:42",                              os: fedora, version: "42" }
           - { name: "Fedora 43",         image: "fedora:43",                              os: fedora, version: "43" }
+          - { name: "Fedora 44",         image: "fedora:44",                              os: fedora, version: "44" }
     steps:
       - name: Install curl
         run: dnf install -y --allowerasing curl sudo
@@ -85,7 +85,7 @@ jobs:
       matrix:
         include:
           - { name: "Airgap Ubuntu 24.04", image: "ubuntu:24.04", os: ubuntu, version: noble, arch: amd64 }
-          - { name: "Airgap Fedora 42",    image: "fedora:42",    os: fedora, version: "42", arch: x86_64 }
+          - { name: "Airgap Fedora 43",    image: "fedora:43",    os: fedora, version: "43", arch: x86_64 }
     steps:
       - name: Install prerequisites
         run: |
