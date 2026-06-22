@@ -1,1 +1,30 @@
-.gitnexus
+# Code intelligence index (local, regenerated on demand)
+.gitnexus/
+
+# AI tooling local config
+.claude/
+
+# Local planning and session artifacts
+plans/
+release-manifest.json
+.repomixignore
+
+# OS artifacts
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
