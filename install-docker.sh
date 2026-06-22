@@ -182,7 +182,7 @@ EOF
     sudo apt-get update -y
     local pkgs=()
     build_package_list pkgs
-    sudo apt-get install -y "${pkgs[@]}"
+    sudo apt-get install -y "${pkgs[@]}" || die "Failed to install Docker packages."
 }
 
 install_docker_dnf() {
@@ -207,7 +207,7 @@ install_docker_dnf() {
     log "Installing Docker Engine…"
     local pkgs=()
     build_package_list_dnf pkgs
-    sudo dnf install -y "${pkgs[@]}"
+    sudo dnf install -y "${pkgs[@]}" || die "Failed to install Docker packages."
 }
 
 # ── Online mode entry point ──────────────────────────────────────────

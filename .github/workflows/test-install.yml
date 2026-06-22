@@ -63,6 +63,16 @@ jobs:
         run: dnf install -y --allowerasing curl sudo
       - name: Download installer
         run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+      - name: Enable base repos for RHEL 10 (UBI omits iptables-nft, container-selinux)
+        if: matrix.os == 'rhel' && matrix.version == '10'
+        run: |
+          # The ubi10 minimal image ships a repo subset that lacks Docker's
+          # runtime deps. CentOS Stream 10 is binary-compatible with RHEL 10 and
+          # provides the same packages a subscribed RHEL host gets from AppStream.
+          for repo in BaseOS AppStream; do
+            printf '[cs10-%s]\nname=CS10 %s\nbaseurl=https://mirror.stream.centos.org/10-stream/%s/x86_64/os/\ngpgcheck=0\nenabled=1\n' \
+              "$repo" "$repo" "$repo" > "/etc/yum.repos.d/cs10-$repo.repo"
+          done
       - name: Install Docker
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
