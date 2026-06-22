@@ -341,17 +341,17 @@ do_prepare() {
     done
 
     if [[ $failed -gt 0 ]]; then
-        warn "Some packages failed to find/download. Check the errors above."
+        die "$failed package(s) failed to find/download — the bundle would be incomplete. Check the errors above."
+    fi
+
+    if [[ "$dry_run" == "true" ]]; then
+        log "Dry run completed successfully!"
+        rmdir "$dest_dir" 2>/dev/null || true
     else
-        if [[ "$dry_run" == "true" ]]; then
-            log "Dry run completed successfully!"
-            rmdir "$dest_dir" 2>/dev/null || true
-        else
-            log "Generating SHA256 checksums…"
-            (cd "$dest_dir" && sha256sum -- *."${ext}" > checksums.sha256)
-            log "Completed! All files downloaded to ./${dest_dir}"
-            log "Checksums saved to ./${dest_dir}/checksums.sha256"
-        fi
+        log "Generating SHA256 checksums…"
+        (cd "$dest_dir" && sha256sum -- *."${ext}" > checksums.sha256)
+        log "Completed! All files downloaded to ./${dest_dir}"
+        log "Checksums saved to ./${dest_dir}/checksums.sha256"
     fi
 }
 
@@ -393,6 +393,10 @@ do_install() {
     else
         die "No .deb or .rpm packages found in $pkg_dir"
     fi
+
+    # Confirm the packages actually installed (catches arch mismatch, unmet
+    # dependencies, or a partial dpkg/rpm run that would otherwise look fine).
+    command -v docker >/dev/null 2>&1 || die "Offline install failed: 'docker' not found after install. Check the architecture and dependency errors above."
 
     enable_and_group
 

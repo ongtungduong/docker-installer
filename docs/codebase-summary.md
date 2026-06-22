@@ -13,6 +13,7 @@
 | File | Purpose |
 |---|---|
 | `.github/workflows/test-install.yml` | Automated test matrix: 6 apt distros, 7 dnf distros |
+| `.github/workflows/release.yml` | On tag `v*` / manual dispatch: builds 26 airgap `.tar.gz` bundles (13 distros × amd64/arm64) and publishes a GitHub Release |
 | `README.md` | User-facing quick start guide |
 | `docs/project-overview-pdr.md` | Requirements, architecture, roadmap |
 | `docs/codebase-summary.md` | This file |
@@ -130,8 +131,9 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 3. **Install packages**:
    - **dpkg path**: `sudo dpkg -i *.deb`; on error, `sudo apt-get install -f -y` (auto-fix deps)
    - **rpm path**: `sudo dnf install -y *.rpm` when dnf is present (resolves deps against installed packages); falls back to `sudo rpm -Uvh --force *.rpm` otherwise
-4. **Enable services**: `sudo systemctl enable --now docker containerd`
-5. **Configure docker group** (non-root)
+4. **Verify install**: `command -v docker` must exist, else die (catches arch mismatch / unmet deps that left a partial install)
+5. **Enable services**: `sudo systemctl enable --now docker containerd`
+6. **Configure docker group** (non-root)
 
 ### Entry Point & Routing
 

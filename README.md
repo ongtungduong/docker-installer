@@ -75,6 +75,23 @@ bash install-docker.sh --upgrade --yes
 
 ### 2. Airgapped Installation (Offline)
 
+#### Option A: Download a prebuilt bundle (easiest)
+
+Each [release](https://github.com/ongtungduong/docker-installer/releases) ships a
+self-contained `.tar.gz` per distro and architecture (amd64 + arm64), bundling the
+Docker packages, `checksums.sha256`, and `install-docker.sh`:
+
+```bash
+# On the offline server (example: Ubuntu 24.04 amd64)
+tar -xzf docker-ubuntu-noble-amd64.tar.gz
+cd docker-ubuntu-noble-amd64
+sudo ./install-docker.sh --airgap "$(pwd)"
+```
+
+Verify a download against the release's `SHA256SUMS.txt` before transferring.
+
+#### Option B: Prepare packages yourself
+
 #### Step 1: Prepare Packages
 
 On an internet-connected machine, download Docker packages:
