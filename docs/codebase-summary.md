@@ -157,16 +157,24 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 
 **DNF matrix** (7 jobs): RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44
 
-**Total: 13 distros, 26 jobs** (apt install + dry-run prepare per distro)
+**Total: 13 distros, 26 jobs** (online install + real airgap install per distro)
 
 ### Test Steps
 
+**Online jobs** (`apt-distros`, `dnf-distros`):
 1. Install curl, sudo (base image may lack them)
 2. Download script from current commit SHA
-3. Mock systemctl (return 0) so services "enable" in container
-4. Run `install-docker.sh --yes`
+3. (RHEL 10 only) enable CentOS Stream 10 base repos for Docker's runtime deps
+4. Mock systemctl (return 0) so services "enable" in container
+5. Run `install-docker.sh --yes`
+6. Verify `docker --version` and `docker compose version`
+
+**Airgap jobs** (`airgap-distros`, all 13 distros, fresh container):
+1. Install curl, sudo; download script
+2. (RHEL 10 only) enable CentOS Stream 10 base repos
+3. Real prepare: `install-docker.sh --airgap --prepare --os … --arch …`
+4. Offline install: `install-docker.sh --airgap ./docker-*`
 5. Verify `docker --version` and `docker compose version`
-6. Run `install-docker.sh --airgap --prepare --dry-run` for architecture verification
 
 ### Why Mock systemctl?
 
@@ -231,8 +239,7 @@ Airgap Install:
 ## Testing Checklist
 
 - [ ] All 13 distros pass online install (`install-docker.sh --yes`)
-- [ ] All 13 distros pass airgap dry-run prepare (`install-docker.sh --airgap --prepare --dry-run`)
-- [ ] All 13 distros pass airgap real prepare + install (new smoke test)
+- [ ] All 13 distros pass airgap real prepare + offline install (`airgap-distros` job)
 - [ ] GPG fingerprint verified (apt only, requires gpg CLI)
 - [ ] Checksum verification catches corrupted packages
 - [ ] Cleanup trap removes partial config on failure

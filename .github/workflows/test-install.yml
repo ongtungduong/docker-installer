@@ -31,7 +31,7 @@ jobs:
         run: apt-get update -y && apt-get install -y curl sudo
       - name: Download installer
         run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker
+      - name: Install Docker (online)
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
           bash /tmp/install-docker.sh --yes
@@ -39,8 +39,6 @@ jobs:
         run: docker --version
       - name: Verify Docker Compose version
         run: docker compose version
-      - name: Test airgap prepare (dry-run)
-        run: bash /tmp/install-docker.sh --airgap --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch amd64 --dry-run
 
   dnf-distros:
     name: ${{ matrix.name }}
@@ -73,7 +71,7 @@ jobs:
             printf '[cs10-%s]\nname=CS10 %s\nbaseurl=https://mirror.stream.centos.org/10-stream/%s/x86_64/os/\ngpgcheck=0\nenabled=1\n' \
               "$repo" "$repo" "$repo" > "/etc/yum.repos.d/cs10-$repo.repo"
           done
-      - name: Install Docker
+      - name: Install Docker (online)
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
           bash /tmp/install-docker.sh --yes
@@ -81,11 +79,11 @@ jobs:
         run: docker --version
       - name: Verify Docker Compose version
         run: docker compose version
-      - name: Test airgap prepare (dry-run)
-        run: bash /tmp/install-docker.sh --airgap --prepare --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch x86_64 --dry-run
 
-  # Real airgap end-to-end: download packages, then install offline from them.
-  airgap-smoke:
+  # Real airgap end-to-end for every distro: download packages on a clean host,
+  # then install Docker offline from them. Runs in a fresh container (no prior
+  # online install) so the script's "already installed" guard does not trip.
+  airgap-distros:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     container:
@@ -94,8 +92,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "Airgap Ubuntu 24.04", image: "ubuntu:24.04", os: ubuntu, version: noble, arch: amd64 }
-          - { name: "Airgap Fedora 43",    image: "fedora:43",    os: fedora, version: "43", arch: x86_64 }
+          - { name: "Airgap Ubuntu 22.04",     image: "ubuntu:22.04",  os: ubuntu, version: jammy,    arch: amd64 }
+          - { name: "Airgap Ubuntu 24.04",     image: "ubuntu:24.04",  os: ubuntu, version: noble,    arch: amd64 }
+          - { name: "Airgap Ubuntu 26.04",     image: "ubuntu:26.04",  os: ubuntu, version: resolute, arch: amd64 }
+          - { name: "Airgap Debian 11",        image: "debian:11",     os: debian, version: bullseye, arch: amd64 }
+          - { name: "Airgap Debian 12",        image: "debian:12",     os: debian, version: bookworm, arch: amd64 }
+          - { name: "Airgap Debian 13",        image: "debian:13",     os: debian, version: trixie,   arch: amd64 }
+          - { name: "Airgap RHEL 8",           image: "registry.access.redhat.com/ubi8/ubi",  os: rhel,   version: "8",  arch: x86_64 }
+          - { name: "Airgap RHEL 9",           image: "registry.access.redhat.com/ubi9/ubi",  os: rhel,   version: "9",  arch: x86_64 }
+          - { name: "Airgap RHEL 10",          image: "registry.access.redhat.com/ubi10/ubi", os: rhel,   version: "10", arch: x86_64 }
+          - { name: "Airgap CentOS Stream 9",  image: "quay.io/centos/centos:stream9",        os: centos, version: "9",  arch: x86_64 }
+          - { name: "Airgap CentOS Stream 10", image: "quay.io/centos/centos:stream10",       os: centos, version: "10", arch: x86_64 }
+          - { name: "Airgap Fedora 43",        image: "fedora:43",     os: fedora, version: "43", arch: x86_64 }
+          - { name: "Airgap Fedora 44",        image: "fedora:44",     os: fedora, version: "44", arch: x86_64 }
     steps:
       - name: Install prerequisites
         run: |
@@ -106,6 +115,13 @@ jobs:
           fi
       - name: Download installer
         run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
+      - name: Enable base repos for RHEL 10 (UBI omits iptables-nft, container-selinux)
+        if: matrix.os == 'rhel' && matrix.version == '10'
+        run: |
+          for repo in BaseOS AppStream; do
+            printf '[cs10-%s]\nname=CS10 %s\nbaseurl=https://mirror.stream.centos.org/10-stream/%s/x86_64/os/\ngpgcheck=0\nenabled=1\n' \
+              "$repo" "$repo" "$repo" > "/etc/yum.repos.d/cs10-$repo.repo"
+          done
       - name: Airgap prepare (real download) then offline install
         run: |
           printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl

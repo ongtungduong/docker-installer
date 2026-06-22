@@ -71,7 +71,7 @@ bash install-docker.sh --upgrade --yes
 | **CentOS Stream**   | 9, 10                                     | x86_64, aarch64 | dnf            |
 | **Fedora**          | 43, 44                                    | x86_64, aarch64 | dnf            |
 
-**Total CI coverage**: 13 distributions × (online install + airgap prepare) = 26 tests, plus 2 real end-to-end airgap installs (Ubuntu + Fedora) = 28 automated tests before each release.
+**Total CI coverage**: 13 distributions × 2 modes (online install + real end-to-end airgap install) = 26 automated jobs before each release.
 
 ### 2. Airgapped Installation (Offline)
 

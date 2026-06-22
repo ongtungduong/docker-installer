@@ -273,22 +273,25 @@ Exit: 0 (cleanup trap skips on success)
 
 | Stage | Count | Coverage |
 |-------|-------|----------|
-| **apt-distros** (online + dry-run prepare) | 6 | Ubuntu 22.04, 24.04, 26.04 · Debian 11, 12, 13 |
-| **dnf-distros** (online + dry-run prepare) | 7 | RHEL 8, 9, 10 · CentOS Stream 9, 10 · Fedora 43, 44 |
-| **airgap-smoke** (real prepare + install) | 2 | Ubuntu noble, Fedora 43 |
-| **Total** | 15 | 26 standard + 2 smoke = 28 job runs |
+| **apt-distros** (online install) | 6 | Ubuntu 22.04, 24.04, 26.04 · Debian 11, 12, 13 |
+| **dnf-distros** (online install) | 7 | RHEL 8, 9, 10 · CentOS Stream 9, 10 · Fedora 43, 44 |
+| **airgap-distros** (real prepare + offline install) | 13 | every supported distro |
+| **Total** | 26 | 13 online + 13 airgap job runs |
 
-**Standard jobs** (13 distros each):
+**Online jobs** (`apt-distros` + `dnf-distros`, 13 distros):
 1. Install curl + sudo
 2. Download script from current commit
-3. Mock systemctl (containers don't have it)
-4. Run `install-docker.sh --yes` (online mode)
-5. Verify `docker --version` and `docker compose version`
-6. Test `install-docker.sh --airgap --prepare --dry-run` (airgap dry-run)
+3. (RHEL 10 only) enable CentOS Stream 10 base repos so UBI can resolve Docker's runtime deps
+4. Mock systemctl (containers don't have it)
+5. Run `install-docker.sh --yes` (online mode)
+6. Verify `docker --version` and `docker compose version`
 
-**Airgap smoke jobs** (2 distros for real end-to-end test):
-1. Run full prepare: `install-docker.sh --airgap --prepare`
-2. Run full install: `install-docker.sh --airgap ./docker-*-*-*`
-3. Verify `docker --version` and `docker compose version`
+**Airgap jobs** (`airgap-distros`, all 13 distros, real end-to-end in a fresh container):
+1. Install curl + sudo
+2. Download script from current commit
+3. (RHEL 10 only) enable CentOS Stream 10 base repos
+4. Run full prepare: `install-docker.sh --airgap --prepare --os … --os-version … --arch …`
+5. Run full offline install: `install-docker.sh --airgap ./docker-*-*-*`
+6. Verify `docker --version` and `docker compose version`
 
 **Fail-fast**: false (all jobs run even if one fails, to expose all distro issues)
