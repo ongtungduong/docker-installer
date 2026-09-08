@@ -132,7 +132,7 @@ sudo bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 
 ### Matrix
 
-The workflow tests the unified script across 13 Linux distributions with both online and airgap modes:
+The workflow tests the unified script across 13 Linux distributions, 3 stages, 26 total jobs:
 
 #### Stage 1: APT Distros (6 jobs)
 
@@ -157,9 +157,19 @@ The workflow tests the unified script across 13 Linux distributions with both on
 | Fedora | 43 | fedora:43 | dnf |
 | Fedora | 44 | fedora:44 | dnf |
 
+RHEL 10's UBI image omits `iptables-nft` and `container-selinux`. Before the
+install step, `apt-distros`/`dnf-distros` add CentOS Stream 10 `BaseOS`/`AppStream`
+repos (binary-compatible with RHEL 10) so those runtime deps resolve.
+
+#### Stage 3: Real Airgap Install, All 13 Distros (13 jobs)
+
+Runs `--airgap --prepare` (real download, not `--dry-run`) followed by
+`--airgap <dir>` in a fresh container per distro — end-to-end offline install,
+not just a syntax check. Uses the same RHEL 10 repo workaround as Stage 2.
+
 ### What Each Job Does
 
-**For every container in the matrix**:
+**Stage 1 & 2 (online install), for every container in the matrix**:
 
 1. **Install prerequisites**:
    ```bash
@@ -173,7 +183,8 @@ The workflow tests the unified script across 13 Linux distributions with both on
      -o /tmp/install-docker.sh
    ```
 
-3. **Mock systemctl** (containers don't have systemd):
+3. **(RHEL 10 only) Enable CentOS Stream 10 base repos**, then **mock systemctl**
+   (containers don't have systemd):
    ```bash
    printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
    ```
@@ -190,14 +201,19 @@ The workflow tests the unified script across 13 Linux distributions with both on
    docker compose version
    ```
 
-6. **Test airgap prepare (dry-run)**:
+**Stage 3 (real airgap), for every container in the matrix**:
+
+1. Install prerequisites, download script, (RHEL 10 only) enable base repos, mock systemctl — same as above.
+2. **Prepare packages (real download)**:
    ```bash
    bash /tmp/install-docker.sh --airgap --prepare \
-     --os [matrix.os] \
-     --os-version [matrix.version] \
-     --arch [amd64 for APT, x86_64 for DNF] \
-     --dry-run
+     --os [matrix.os] --os-version [matrix.version] --arch [amd64 for APT, x86_64 for DNF]
    ```
+3. **Install offline from the prepared directory**:
+   ```bash
+   bash /tmp/install-docker.sh --airgap "/tmp/<prepared-dir>"
+   ```
+4. **Verify** `docker --version` and `docker compose version`.
 
 ### CI Environment Variables
 
@@ -317,19 +333,27 @@ git push origin [branch]
 ### Release Flow
 
 1. **Create PR** with changes to `install-docker.sh`
-2. **CI validates** all 13 distros (push to PR triggers workflow)
+2. **CI validates** all 13 distros, 26 jobs (push to PR triggers `test-install.yml`)
 3. **Code review** + approval
 4. **Merge to main** (fast-forward or squash merge)
-5. **Users download** directly from main branch:
+5. **Rolling installs**: users can still curl directly from main branch:
    ```bash
    curl -sSL https://raw.githubusercontent.com/ongtungduong/docker-installer/main/install-docker.sh | bash
    ```
-
-No release artifacts, no tagged versions — scripts are served fresh from main.
+6. **Tagged release** (optional, for airgap users): pushing a `v*` tag (or manual
+   dispatch with a `version` input) runs `.github/workflows/release.yml`, which:
+   - Builds 26 self-contained airgap bundles (13 distros × amd64/arm64), each a
+     `.tar.gz` with the Docker packages, `checksums.sha256`, `install-docker.sh`,
+     and an `INSTALL.txt`
+   - Fails the release if fewer than all 26 bundles built (`build` jobs are
+     read-only; only the `release` job has `contents: write`)
+   - Generates `SHA256SUMS.txt` and publishes everything as GitHub Release assets
 
 ### Versioning Strategy
 
-Since scripts are not versioned, communicate breaking changes via:
+The install script itself is not versioned (curl-from-main stays rolling).
+Tagged releases version the **airgap bundles**, not the script logic. Communicate
+breaking changes via:
 - Update the README with migration notes
 - Add comments in scripts explaining deprecated flags
 - Consider backward-compatible flag parsing

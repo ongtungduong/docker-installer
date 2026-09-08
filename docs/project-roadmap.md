@@ -10,6 +10,7 @@
 - GPG fingerprint verification (apt only)
 - SHA256 checksum validation (airgap mode)
 - Automated CI testing on 13 distributions, 2 package managers
+- Tagged GitHub Releases publishing 26 self-contained airgap bundles (13 distros × amd64/arm64) with checksums
 
 **Current limitations**:
 - dnf path lacks fingerprint verification (manual prompt only)
@@ -122,7 +123,7 @@
 |---|---|---|
 | **Distro coverage** | Top 13 Linux distros across apt/dnf | 13/13 ✓ |
 | **Test automation** | 100% CI pass before merge | 26 jobs (13 distros × 2 modes: online + real airgap install) ✓ |
-| **Script size** | <500 LOC single script | ~428 LOC (unified online + airgap) ✓ |
+| **Script size** | <500 LOC single script | ~439 LOC (unified online + airgap) ✓ |
 | **Install speed** | <90 seconds on modern hardware | ~30–45 seconds (verified) ✓ |
 | **Security** | GPG verification + checksum validation | apt ✓, airgap ✓, dnf → pending |
 | **User adoption** | Steady GitHub stars, low issue rate | Tracking |

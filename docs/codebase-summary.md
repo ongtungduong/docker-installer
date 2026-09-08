@@ -6,7 +6,7 @@
 
 | File | LOC | Purpose |
 |------|-----|---------|
-| `install-docker.sh` | 428 | Unified installer: online mode (default) + airgap mode (`--airgap` flag) with prepare/install subcommands |
+| `install-docker.sh` | 439 | Unified installer: online mode (default) + airgap mode (`--airgap` flag) with prepare/install subcommands |
 
 ### CI & Documentation
 

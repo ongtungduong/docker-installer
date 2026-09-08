@@ -93,7 +93,7 @@ Both scripts install:
 | Mode | Cause | Recovery |
 |---|---|---|
 | **GPG verification fails** | Fingerprint mismatch (apt only) | Script dies; cleanup trap removes `/etc/apt/sources.list.d/docker.*` and `/etc/apt/keyrings/docker.asc` |
-| **Package download fails** | Network issue or distro/arch mismatch | In prepare mode, script continues; user sees error count. Install still possible from partial dir. |
+| **Package download fails** | Network issue or distro/arch mismatch | Prepare mode attempts every package, tallies failures, then dies at the end if any failed — no partial-dir install possible; the bundle must be complete |
 | **Checksum mismatch** | Corrupted/tampered package | Install mode dies; checksums.sha256 prevents accidental installation |
 | **dpkg/rpm fails** | Dependency or pre-existing package conflict | apt-get install -f -y (dpkg path) attempts automatic fix; user must resolve rpm issues manually |
 | **systemctl enable fails** | systemd not available in container | Soft warning; installation continues (services may not auto-start) |
@@ -101,10 +101,12 @@ Both scripts install:
 ## Release Process
 
 1. Edit script(s) locally
-2. Run through full CI matrix on PR
-3. All 26 jobs pass → merge to main
-4. GitHub Actions publishes release manifest
-5. Users curl scripts directly from `main` branch (no release artifacts needed)
+2. Run through full CI matrix on PR (`test-install.yml`, 26 jobs)
+3. All jobs pass → merge to main
+4. Rolling installs: users curl `install-docker.sh` directly from `main`
+5. Tagged installs (optional): pushing a `v*` tag runs `release.yml`, which
+   builds 26 airgap bundles (13 distros × amd64/arm64) and publishes them as
+   GitHub Release assets with `SHA256SUMS.txt`
 
 ## Future Roadmap
 
