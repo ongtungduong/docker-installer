@@ -10,7 +10,7 @@
 - GPG fingerprint verification (apt and dnf)
 - SHA256 checksum validation (airgap mode)
 - Automated CI testing on 15 distributions, 2 package managers
-- Tagged GitHub Releases publishing 30 self-contained airgap bundles (15 distros × amd64/arm64) with checksums
+- Tagged GitHub Releases publishing 28 self-contained airgap bundles (14 distros × amd64/arm64) with checksums
 
 **Current limitations**:
 - No package manager support for zypper (SUSE/openSUSE)
@@ -120,8 +120,8 @@
 
 | Metric | Target | Current |
 |---|---|---|
-| **Distro coverage** | Top 15 Linux distros across apt/dnf | 15/15 ✓ |
-| **Test automation** | 100% CI pass before merge | 32 jobs (15 distros × 2 modes: online + real airgap install, plus 2 arm64 airgap) ✓ |
+| **Distro coverage** | Top 14 Linux distros across apt/dnf | 14/14 ✓ |
+| **Test automation** | 100% CI pass before merge | 30 jobs (14 distros × 2 modes: online + real airgap install, plus 2 arm64 airgap) ✓ |
 | **Script size** | <500 LOC single script | ~439 LOC (unified online + airgap) ✓ |
 | **Install speed** | <90 seconds on modern hardware | ~30–45 seconds (verified) ✓ |
 | **Security** | GPG verification + checksum validation | apt ✓, dnf ✓, airgap ✓ |

@@ -13,7 +13,7 @@
 | File | Purpose |
 |---|---|
 | `.github/workflows/test-install.yml` | Automated test matrix: 6 apt distros, 7 dnf distros |
-| `.github/workflows/release.yml` | On tag `v*` / manual dispatch: builds 30 airgap `.tar.gz` bundles (15 distros × amd64/arm64) and publishes a GitHub Release |
+| `.github/workflows/release.yml` | On tag `v*` / manual dispatch: builds 28 airgap `.tar.gz` bundles (14 distros × amd64/arm64) and publishes a GitHub Release |
 | `README.md` | User-facing quick start guide |
 | `docs/project-overview-pdr.md` | Requirements, architecture, roadmap |
 | `docs/codebase-summary.md` | This file |
@@ -156,11 +156,11 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 
 ### test-install.yml Configuration
 
-**APT matrix** (7 jobs): Ubuntu 22.04/24.04/26.04/26.10, Debian 11/12/13
+**APT matrix** (6 jobs): Ubuntu 22.04/24.04/26.04/26.10, Debian 12/13
 
 **DNF matrix** (8 jobs): RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44/45
 
-**Total: 15 distros, 32 install jobs** (online + real airgap install per distro, plus arm64 airgap on Ubuntu 24.04 and Fedora 44) and a ShellCheck `lint` job
+**Total: 14 distros, 30 install jobs** (online + real airgap install per distro, plus arm64 airgap on Ubuntu 24.04 and Fedora 44) and a ShellCheck `lint` job
 
 ### Test Steps
 
@@ -172,7 +172,7 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 5. Run `install-docker.sh --yes`
 6. Verify `docker --version` and `docker compose version`
 
-**Airgap jobs** (`airgap-distros`, all 15 distros + 2 arm64, fresh container):
+**Airgap jobs** (`airgap-distros`, all 14 distros + 2 arm64, fresh container):
 1. Install curl, sudo; download script
 2. (RHEL 10 only) enable CentOS Stream 10 base repos
 3. Real prepare: `install-docker.sh --airgap --prepare --os … --arch …`
@@ -241,8 +241,8 @@ Airgap Install:
 
 ## Testing Checklist
 
-- [ ] All 15 distros pass online install (`install-docker.sh --yes`)
-- [ ] All 15 distros pass airgap real prepare + offline install (`airgap-distros` job)
+- [ ] All 14 distros pass online install (`install-docker.sh --yes`)
+- [ ] All 14 distros pass airgap real prepare + offline install (`airgap-distros` job)
 - [ ] GPG fingerprint verified (apt only, requires gpg CLI)
 - [ ] Checksum verification catches corrupted packages
 - [ ] Cleanup trap removes partial config on failure

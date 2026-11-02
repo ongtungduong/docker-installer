@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Cross product: 2 arches x 15 distros = 30 bundles.
+      # Cross product: 2 arches x 14 distros = 28 bundles.
       # distro is encoded "<os>-<version>" (no os/version contains a hyphen).
       matrix:
         arch: [amd64, arm64]
@@ -31,7 +31,6 @@ jobs:
           - ubuntu-noble
           - ubuntu-resolute
           - ubuntu-stonking
-          - debian-bullseye
           - debian-bookworm
           - debian-trixie
           - rhel-8
@@ -104,8 +103,8 @@ jobs:
           cd dist
           count=$(ls -1 *.tar.gz | wc -l)
           echo "Total bundles: $count"
-          # All-or-nothing: never publish a partial set (15 distros x 2 arches).
-          [ "$count" -eq 30 ] || { echo "::error::expected 30 bundles, got $count"; exit 1; }
+          # All-or-nothing: never publish a partial set (14 distros x 2 arches).
+          [ "$count" -eq 28 ] || { echo "::error::expected 28 bundles, got $count"; exit 1; }
           sha256sum -- *.tar.gz > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Attest build provenance

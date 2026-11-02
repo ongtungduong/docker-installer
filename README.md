@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/ongtungduong/docker-installer/main/
 - **Airgap/Offline (`--airgap`)**: Downloads packages for offline use (`--airgap --prepare`) or installs from previously downloaded packages (`--airgap <dir>`).
 - **GPG Verification**: Validates Docker's official GPG fingerprint (apt and dnf) and aborts on mismatch.
 - **SHA256 Checksums**: Integrity checking for offline packages (required unless `--allow-unverified`).
-- **Automated Testing**: CI matrix validates on 15 Linux distributions (plus arm64 airgap installs on Ubuntu 24.04 and Fedora 44).
+- **Automated Testing**: CI matrix validates on 14 Linux distributions (plus arm64 airgap installs on Ubuntu 24.04 and Fedora 44).
 
 ## Prerequisites
 
@@ -65,15 +65,15 @@ bash install-docker.sh --upgrade --yes
 | OS                  | Versions                                  | Architecture | Package Manager |
 | ------------------- | ----------------------------------------- | ------------ | --------------- |
 | **Ubuntu**          | 22.04 LTS, 24.04 LTS, 26.04 LTS, 26.10    | amd64, arm64 | apt             |
-| **Debian**          | 12, 13; 11 (EOL, best-effort)            | amd64, arm64, armhf | apt         |
+| **Debian**          | 12, 13                                   | amd64, arm64, armhf | apt         |
 | **Raspberry Pi OS** | 11, 12 (32-bit armhf is deprecated by Docker; Engine v28 is the last supported major) | armhf | apt |
 | **RHEL**            | 8, 9, 10                                  | x86_64, aarch64 | dnf            |
 | **CentOS Stream**   | 9, 10                                     | x86_64, aarch64 | dnf            |
 | **Fedora**          | 43, 44, 45                                  | x86_64, aarch64 | dnf            |
 
-Debian 11 is no longer listed in Docker's official docs; it stays in CI and bundles but is best-effort. Docker also publishes s390x (Ubuntu, RHEL) and ppc64le (Ubuntu, Debian, Fedora, CentOS) packages; `--prepare` passes these architectures through, but this repo's CI covers amd64 and arm64 only.
+Docker also publishes s390x (Ubuntu, RHEL) and ppc64le (Ubuntu, Debian, Fedora, CentOS) packages; `--prepare` passes these architectures through, but this repo's CI covers amd64 and arm64 only.
 
-**Total CI coverage**: 15 distributions × 2 modes (online install + real end-to-end airgap install) + 2 arm64 airgap installs = 32 install jobs, plus a ShellCheck lint job.
+**Total CI coverage**: 14 distributions × 2 modes (online install + real end-to-end airgap install) + 2 arm64 airgap installs = 30 install jobs, plus a ShellCheck lint job.
 
 ### 2. Airgapped Installation (Offline)
 

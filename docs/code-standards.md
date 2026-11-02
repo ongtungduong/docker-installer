@@ -261,7 +261,7 @@ Helps navigate 200-line scripts without scrolling infinitely.
 
 ### CI Testing
 
-CI runs all 15 distros via `.github/workflows/test-install.yml`. Before pushing:
+CI runs all 14 distros via `.github/workflows/test-install.yml`. Before pushing:
 
 - Ensure no breaking changes to flag parsing
 - No new OS detection logic without testing logic for fallback
@@ -282,7 +282,7 @@ CI runs all 15 distros via `.github/workflows/test-install.yml`. Before pushing:
    fix(airgap): handle symlinks in package dir
    docs: clarify airgap workflow for arm64
    ```
-5. **Push and open PR** — CI matrix will validate all 15 distros + airgap smoke tests
+5. **Push and open PR** — CI matrix will validate all 14 distros + airgap smoke tests
 6. **Wait for all jobs to pass** before merge
 
 ### Code Review Focus
@@ -378,7 +378,7 @@ detect_os() {
 - **Clarity over brevity** — readable bash beats golfed bash
 - **Fail-safe defaults** — cleanup trap, readonly constants, local variables
 - **Explicit error handling** — die() for fatal, warn() for recoverable
-- **Tested paths** — all 15 distros, 2 modes, covered in CI
+- **Tested paths** — all 14 distros, 2 modes, covered in CI
 - **No surprises** — consistent formatting, predictable flow
 
 Contributions that respect these principles will integrate smoothly.

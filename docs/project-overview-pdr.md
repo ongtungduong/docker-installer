@@ -75,7 +75,7 @@ Both scripts install:
 | Distribution | Versions | Arch |
 |---|---|---|
 | Ubuntu | 22.04 LTS, 24.04 LTS, 26.04 LTS, 26.10 | amd64, arm64 |
-| Debian | 11 (Bullseye, EOL, best-effort), 12 (Bookworm), 13 (Trixie) | amd64, armhf, arm64 |
+| Debian | 12 (Bookworm), 13 (Trixie) | amd64, armhf, arm64 |
 | Raspberry Pi OS | 11, 12 (32-bit armhf deprecated by Docker; v28 is the last supported major) | armhf |
 
 ### DNF (Red Hat-based)
@@ -86,7 +86,7 @@ Both scripts install:
 | CentOS Stream | 9, 10 | x86_64, aarch64 |
 | Fedora | 43, 44, 45 | x86_64, aarch64 |
 
-**Total: 15 distros × 2 modes + 2 arm64 airgap = 32 CI install jobs** (plus a ShellCheck lint job). Docker also lists s390x and ppc64le for some distros; the script passes these through in `--prepare`, CI covers amd64/arm64 only.
+**Total: 14 distros × 2 modes + 2 arm64 airgap = 30 CI install jobs** (plus a ShellCheck lint job). Docker also lists s390x and ppc64le for some distros; the script passes these through in `--prepare`, CI covers amd64/arm64 only.
 
 ## Failure Modes & Recovery
 
@@ -101,11 +101,11 @@ Both scripts install:
 ## Release Process
 
 1. Edit script(s) locally
-2. Run through full CI matrix on PR (`test-install.yml`, 32 install jobs)
+2. Run through full CI matrix on PR (`test-install.yml`, 30 install jobs)
 3. All jobs pass → merge to main
 4. Rolling installs: users curl `install-docker.sh` directly from `main`
 5. Tagged installs (optional): pushing a `v*` tag runs `release.yml`, which
-   builds 30 airgap bundles (15 distros × amd64/arm64) and publishes them as
+   builds 28 airgap bundles (14 distros × amd64/arm64) and publishes them as
    GitHub Release assets with `SHA256SUMS.txt`
 
 ## Future Roadmap

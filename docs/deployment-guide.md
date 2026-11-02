@@ -132,9 +132,9 @@ sudo bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 
 ### Matrix
 
-The workflow tests the unified script across 15 Linux distributions, 4 job groups, 32 install jobs plus a ShellCheck `lint` job:
+The workflow tests the unified script across 14 Linux distributions, 4 job groups, 30 install jobs plus a ShellCheck `lint` job:
 
-#### Stage 1: APT Distros (7 jobs)
+#### Stage 1: APT Distros (6 jobs)
 
 | Distro | Version | Image | Package Manager |
 |--------|---------|-------|---|
@@ -142,7 +142,6 @@ The workflow tests the unified script across 15 Linux distributions, 4 job group
 | Ubuntu | 24.04 (Noble) | ubuntu:24.04 | apt |
 | Ubuntu | 26.04 LTS (Resolute) | ubuntu:26.04 | apt |
 | Ubuntu | 26.10 (Stonking) | ubuntu:26.10 | apt |
-| Debian | 11 (Bullseye, EOL, best-effort) | debian:11 | apt |
 | Debian | 12 (Bookworm) | debian:12 | apt |
 | Debian | 13 (Trixie) | debian:13 | apt |
 
@@ -164,7 +163,7 @@ install step, `apt-distros`/`dnf-distros` add CentOS Stream 10 `BaseOS`/`AppStre
 repos (binary-compatible with RHEL 10) so those runtime deps resolve. The repo
 is written with `gpgcheck=0`, which is test-only.
 
-#### Stage 3: Real Airgap Install, All 15 Distros (15 jobs + 2 arm64 jobs)
+#### Stage 3: Real Airgap Install, All 14 Distros (14 jobs + 2 arm64 jobs)
 
 Runs `--airgap --prepare` (real download, not `--dry-run`) followed by
 `--airgap <dir>` in a fresh container per distro — end-to-end offline install,
@@ -341,7 +340,7 @@ git push origin [branch]
 ### Release Flow
 
 1. **Create PR** with changes to `install-docker.sh`
-2. **CI validates** all 15 distros, 32 install jobs (push to PR triggers `test-install.yml`)
+2. **CI validates** all 14 distros, 30 install jobs (push to PR triggers `test-install.yml`)
 3. **Code review** + approval
 4. **Merge to main** (fast-forward or squash merge)
 5. **Rolling installs**: users can still curl directly from main branch:
@@ -350,11 +349,11 @@ git push origin [branch]
    ```
 6. **Tagged release** (optional, for airgap users): pushing a `v*` tag (or manual
    dispatch with a `version` input) runs `.github/workflows/release.yml`, which:
-   - Builds 30 self-contained airgap bundles (15 distros × amd64/arm64), each a
+   - Builds 28 self-contained airgap bundles (14 distros × amd64/arm64), each a
      `.tar.gz` with the Docker packages, `checksums.sha256` (plus `docker.gpg` for
      RPM bundles), `install-docker.sh`,
      and an `INSTALL.txt`
-   - Fails the release if fewer than all 30 bundles built (`build` jobs are
+   - Fails the release if fewer than all 28 bundles built (`build` jobs are
      read-only; only the `release` job has `contents: write`, and it attests build
      provenance for the bundles)
    - Generates `SHA256SUMS.txt` and publishes everything as GitHub Release assets
@@ -374,7 +373,7 @@ If a commit breaks things:
 
 1. **Identify the bad commit** (GitHub Actions log shows which commit failed)
 2. **Revert on main**: `git revert [bad-commit]`
-3. **CI validates revert** (all 15 distros)
+3. **CI validates revert** (all 14 distros)
 4. **Users automatically get fixed version** on next curl
 
 ---
