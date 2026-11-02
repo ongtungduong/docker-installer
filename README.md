@@ -73,7 +73,7 @@ bash install-docker.sh --upgrade --yes
 
 Docker also publishes s390x (Ubuntu, RHEL) and ppc64le (Ubuntu, Debian, Fedora, CentOS) packages; `--prepare` passes these architectures through, but this repo's CI covers amd64 and arm64 only.
 
-**Total CI coverage**: 14 distributions × 2 modes (online install + real end-to-end airgap install) + 2 arm64 airgap installs = 30 install jobs, plus a ShellCheck lint job.
+**Total CI coverage**: one job per distribution (14 + 2 arm64), each running a real end-to-end airgap install followed by an online install = 16 install jobs, plus a ShellCheck lint job.
 
 ### 2. Airgapped Installation (Offline)
 

@@ -275,25 +275,19 @@ Exit: 0 (cleanup trap skips on success)
 | Stage | Count | Coverage |
 |-------|-------|----------|
 | **lint** (ShellCheck) | 1 | `install-docker.sh` |
-| **apt-distros** (online install) | 6 | Ubuntu 22.04, 24.04, 26.04, 26.10 · Debian 12, 13 |
-| **dnf-distros** (online install) | 8 | RHEL 8, 9, 10 · CentOS Stream 9, 10 · Fedora 43, 44, 45 |
-| **airgap-distros** (real prepare + offline install) | 16 | every supported distro + arm64 on Ubuntu 24.04 and Fedora 44 (`ubuntu-24.04-arm` runner) |
-| **Total install jobs** | 30 | 14 online + 14 airgap + 2 arm64 airgap |
+| **distros** (airgap prepare + offline install, then online install) | 16 | 14 distros + arm64 on Ubuntu 24.04 and Fedora 44 (`ubuntu-24.04-arm` runner) |
+| **Total install jobs** | 16 | one job per OS |
 
-**Online jobs** (`apt-distros` + `dnf-distros`, 14 distros):
-1. Install curl + sudo
+**`distros` job** (fresh container; airgap runs first so the offline install cannot use a Docker repo left by an online install):
+1. Install curl + sudo (+ gnupg2 on dnf, needed by `--prepare`)
 2. Download script from current commit
 3. (RHEL 10 only) enable CentOS Stream 10 base repos so UBI can resolve Docker's runtime deps
 4. Mock systemctl (containers don't have it)
-5. Run `install-docker.sh --yes` (online mode)
-6. Verify `docker --version` and `docker compose version`
+5. Run full prepare: `install-docker.sh --airgap --prepare --os … --os-version … --arch …`
+6. Run full offline install: `install-docker.sh --airgap ./docker-*-*-*`, verify `docker --version` and `docker compose version`
+7. Remove docker-ce packages (script refuses to install over existing Docker)
+8. Run `install-docker.sh --yes` (online mode), verify again
 
-**Airgap jobs** (`airgap-distros`, all 14 distros + 2 arm64, real end-to-end in a fresh container):
-1. Install curl + sudo
-2. Download script from current commit
-3. (RHEL 10 only) enable CentOS Stream 10 base repos
-4. Run full prepare: `install-docker.sh --airgap --prepare --os … --os-version … --arch …`
-5. Run full offline install: `install-docker.sh --airgap ./docker-*-*-*`
-6. Verify `docker --version` and `docker compose version`
+Steps 7–8 run even if airgap failed (`if: !cancelled()`), so one run reports both modes.
 
 **Fail-fast**: false (all jobs run even if one fails, to expose all distro issues)

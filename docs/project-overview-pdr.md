@@ -86,7 +86,7 @@ Both scripts install:
 | CentOS Stream | 9, 10 | x86_64, aarch64 |
 | Fedora | 43, 44, 45 | x86_64, aarch64 |
 
-**Total: 14 distros × 2 modes + 2 arm64 airgap = 30 CI install jobs** (plus a ShellCheck lint job). Docker also lists s390x and ppc64le for some distros; the script passes these through in `--prepare`, CI covers amd64/arm64 only.
+**Total: 14 distros + 2 arm64 = 16 CI install jobs (each runs airgap then online install)** (plus a ShellCheck lint job). Docker also lists s390x and ppc64le for some distros; the script passes these through in `--prepare`, CI covers amd64/arm64 only.
 
 ## Failure Modes & Recovery
 
@@ -101,7 +101,7 @@ Both scripts install:
 ## Release Process
 
 1. Edit script(s) locally
-2. Run through full CI matrix on PR (`test-install.yml`, 30 install jobs)
+2. Run through full CI matrix on PR (`test-install.yml`, 16 install jobs)
 3. All jobs pass → merge to main
 4. Rolling installs: users curl `install-docker.sh` directly from `main`
 5. Tagged installs (optional): pushing a `v*` tag runs `release.yml`, which

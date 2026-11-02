@@ -132,9 +132,9 @@ sudo bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 
 ### Matrix
 
-The workflow tests the unified script across 14 Linux distributions, 4 job groups, 30 install jobs plus a ShellCheck `lint` job:
+The workflow tests the unified script across 14 Linux distributions: one `distros` job per OS (16 jobs including arm64) plus a ShellCheck `lint` job.
 
-#### Stage 1: APT Distros (6 jobs)
+#### APT Distros (6 jobs)
 
 | Distro | Version | Image | Package Manager |
 |--------|---------|-------|---|
@@ -145,7 +145,7 @@ The workflow tests the unified script across 14 Linux distributions, 4 job group
 | Debian | 12 (Bookworm) | debian:12 | apt |
 | Debian | 13 (Trixie) | debian:13 | apt |
 
-#### Stage 2: DNF Distros (8 jobs)
+#### DNF Distros (8 jobs)
 
 | Distro | Version | Image | Package Manager |
 |--------|---------|-------|---|
@@ -158,30 +158,25 @@ The workflow tests the unified script across 14 Linux distributions, 4 job group
 | Fedora | 44 | fedora:44 | dnf |
 | Fedora | 45 | fedora:45 | dnf |
 
+Two extra jobs (Ubuntu 24.04 arm64, Fedora 44 aarch64) run the same steps on the native
+`ubuntu-24.04-arm` runner.
+
 RHEL 10's UBI image omits `iptables-nft` and `container-selinux`. Before the
-install step, `apt-distros`/`dnf-distros` add CentOS Stream 10 `BaseOS`/`AppStream`
+install steps, the job adds CentOS Stream 10 `BaseOS`/`AppStream`
 repos (binary-compatible with RHEL 10) so those runtime deps resolve. The repo
 is written with `gpgcheck=0`, which is test-only.
-
-#### Stage 3: Real Airgap Install, All 14 Distros (14 jobs + 2 arm64 jobs)
-
-Runs `--airgap --prepare` (real download, not `--dry-run`) followed by
-`--airgap <dir>` in a fresh container per distro — end-to-end offline install,
-not just a syntax check. Uses the same RHEL 10 repo workaround as Stage 2.
-Two extra jobs (Ubuntu 24.04 arm64, Fedora 44 aarch64) run on the native
-`ubuntu-24.04-arm` runner.
 
 A separate `lint` job runs `shellcheck install-docker.sh`. All actions are pinned
 by commit SHA.
 
 ### What Each Job Does
 
-**Stage 1 & 2 (online install), for every container in the matrix**:
+Every `distros` job runs, in a fresh container:
 
 1. **Install prerequisites**:
    ```bash
-   apt-get update -y && apt-get install -y curl sudo   # APT
-   dnf install -y --allowerasing curl sudo             # DNF
+   apt-get update -y && apt-get install -y curl sudo            # APT
+   dnf install -y --allowerasing curl sudo gnupg2               # DNF (gpg is needed by --prepare)
    ```
 
 2. **Download script**:
@@ -197,30 +192,26 @@ by commit SHA.
    ```
    This stub allows `systemctl enable --now` to succeed without a real systemd daemon.
 
-4. **Run online installer**:
+4. **Airgap first (real download, not `--dry-run`)**, so the offline install cannot
+   use a Docker repo configured by an earlier online install:
+   ```bash
+   bash /tmp/install-docker.sh --airgap --prepare \
+     --os [matrix.os] --os-version [matrix.version] --arch [matrix.arch]
+   bash /tmp/install-docker.sh --airgap "/tmp/<prepared-dir>"
+   ```
+   Then verify `docker --version` and `docker compose version`.
+
+5. **Remove Docker** (`apt-get purge` / `dnf remove` of docker-ce, docker-ce-cli,
+   containerd.io, docker-buildx-plugin, docker-compose-plugin), because the script
+   refuses to install over an existing Docker.
+
+6. **Online install**, then verify again:
    ```bash
    bash /tmp/install-docker.sh --yes
    ```
 
-5. **Verify Docker installed**:
-   ```bash
-   docker --version
-   docker compose version
-   ```
-
-**Stage 3 (real airgap), for every container in the matrix**:
-
-1. Install prerequisites, download script, (RHEL 10 only) enable base repos, mock systemctl — same as above.
-2. **Prepare packages (real download)**:
-   ```bash
-   bash /tmp/install-docker.sh --airgap --prepare \
-     --os [matrix.os] --os-version [matrix.version] --arch [amd64 for APT, x86_64 for DNF]
-   ```
-3. **Install offline from the prepared directory**:
-   ```bash
-   bash /tmp/install-docker.sh --airgap "/tmp/<prepared-dir>"
-   ```
-4. **Verify** `docker --version` and `docker compose version`.
+Steps 5–6 run even if the airgap steps failed (`if: ${{ !cancelled() }}`), so one run
+reports both modes.
 
 ### CI Environment Variables
 
@@ -270,8 +261,7 @@ bash install-docker.sh --airgap --prepare --dry-run
 Install [act](https://github.com/nektos/act):
 
 ```bash
-act push --job apt-distros
-act push --job dnf-distros
+act push --job distros
 ```
 
 This runs the actual workflow steps in Docker containers locally.
@@ -340,7 +330,7 @@ git push origin [branch]
 ### Release Flow
 
 1. **Create PR** with changes to `install-docker.sh`
-2. **CI validates** all 14 distros, 30 install jobs (push to PR triggers `test-install.yml`)
+2. **CI validates** all 14 distros, 16 install jobs (push to PR triggers `test-install.yml`)
 3. **Code review** + approval
 4. **Merge to main** (fast-forward or squash merge)
 5. **Rolling installs**: users can still curl directly from main branch:

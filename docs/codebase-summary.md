@@ -156,28 +156,25 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 
 ### test-install.yml Configuration
 
-**APT matrix** (6 jobs): Ubuntu 22.04/24.04/26.04/26.10, Debian 12/13
+One `distros` job per OS (matrix of 16: 14 distros + arm64 on Ubuntu 24.04 and Fedora 44), plus a ShellCheck `lint` job.
 
-**DNF matrix** (8 jobs): RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44/45
+**APT**: Ubuntu 22.04/24.04/26.04/26.10, Debian 12/13
+**DNF**: RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44/45
 
-**Total: 14 distros, 30 install jobs** (online + real airgap install per distro, plus arm64 airgap on Ubuntu 24.04 and Fedora 44) and a ShellCheck `lint` job
+**Total: 14 distros, 16 install jobs**
 
 ### Test Steps
 
-**Online jobs** (`apt-distros`, `dnf-distros`):
-1. Install curl, sudo (base image may lack them)
-2. Download script from current commit SHA
-3. (RHEL 10 only) enable CentOS Stream 10 base repos for Docker's runtime deps
-4. Mock systemctl (return 0) so services "enable" in container
-5. Run `install-docker.sh --yes`
-6. Verify `docker --version` and `docker compose version`
-
-**Airgap jobs** (`airgap-distros`, all 14 distros + 2 arm64, fresh container):
-1. Install curl, sudo; download script
-2. (RHEL 10 only) enable CentOS Stream 10 base repos
-3. Real prepare: `install-docker.sh --airgap --prepare --os … --arch …`
-4. Offline install: `install-docker.sh --airgap ./docker-*`
+**`distros` job** (fresh container per distro, airgap first so the offline install cannot use a Docker repo left by an online install):
+1. Install curl, sudo (+ gnupg2 on dnf; needed by `--prepare`); download script from current commit SHA
+2. (RHEL 10 only) enable CentOS Stream 10 base repos for Docker's runtime deps
+3. Mock systemctl (return 0) so services "enable" in container
+4. Real prepare: `install-docker.sh --airgap --prepare --os … --arch …`, then offline install `install-docker.sh --airgap ./docker-*`
 5. Verify `docker --version` and `docker compose version`
+6. Remove Docker packages (the script refuses to install over an existing Docker)
+7. Run `install-docker.sh --yes` (online), verify again
+
+Steps 6–7 run even if the airgap steps failed, so one run reports both modes.
 
 ### Why Mock systemctl?
 
@@ -241,8 +238,8 @@ Airgap Install:
 
 ## Testing Checklist
 
-- [ ] All 14 distros pass online install (`install-docker.sh --yes`)
-- [ ] All 14 distros pass airgap real prepare + offline install (`airgap-distros` job)
+- [ ] All 14 distros pass online install (`install-docker.sh --yes`, `distros` job)
+- [ ] All 14 distros pass airgap real prepare + offline install (`distros` job)
 - [ ] GPG fingerprint verified (apt only, requires gpg CLI)
 - [ ] Checksum verification catches corrupted packages
 - [ ] Cleanup trap removes partial config on failure

@@ -23,81 +23,12 @@ jobs:
       - name: Run shellcheck
         run: shellcheck install-docker.sh
 
-  apt-distros:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.image }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: "Ubuntu 22.04",  image: "ubuntu:22.04",  os: ubuntu, version: jammy }
-          - { name: "Ubuntu 24.04",  image: "ubuntu:24.04",  os: ubuntu, version: noble }
-          - { name: "Ubuntu 26.04",  image: "ubuntu:26.04",  os: ubuntu, version: resolute }
-          - { name: "Ubuntu 26.10",  image: "ubuntu:26.10",  os: ubuntu, version: stonking }
-          - { name: "Debian 12",     image: "debian:12",     os: debian, version: bookworm }
-          - { name: "Debian 13",     image: "debian:13",     os: debian, version: trixie }
-    steps:
-      - name: Install curl
-        run: apt-get update -y && apt-get install -y curl sudo
-      - name: Download installer
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Install Docker (online)
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh --yes
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  dnf-distros:
-    name: ${{ matrix.name }}
-    runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.image }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: "RHEL 8",            image: "registry.access.redhat.com/ubi8/ubi",    os: rhel,   version: "8" }
-          - { name: "RHEL 9",            image: "registry.access.redhat.com/ubi9/ubi",    os: rhel,   version: "9" }
-          - { name: "RHEL 10",           image: "registry.access.redhat.com/ubi10/ubi",   os: rhel,   version: "10" }
-          - { name: "CentOS Stream 9",   image: "quay.io/centos/centos:stream9",          os: centos, version: "9" }
-          - { name: "CentOS Stream 10",  image: "quay.io/centos/centos:stream10",         os: centos, version: "10" }
-          - { name: "Fedora 43",         image: "fedora:43",                              os: fedora, version: "43" }
-          - { name: "Fedora 44",         image: "fedora:44",                              os: fedora, version: "44" }
-          - { name: "Fedora 45",         image: "fedora:45",                              os: fedora, version: "45" }
-    steps:
-      - name: Install curl
-        run: dnf install -y --allowerasing curl sudo
-      - name: Download installer
-        run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
-      - name: Enable base repos for RHEL 10 (UBI omits iptables-nft, container-selinux)
-        if: matrix.os == 'rhel' && matrix.version == '10'
-        run: |
-          # Test-only: gpgcheck=0 on CentOS mirrors stands in for RHEL entitlements; never use on real hosts.
-          # The ubi10 minimal image ships a repo subset that lacks Docker's
-          # runtime deps. CentOS Stream 10 is binary-compatible with RHEL 10 and
-          # provides the same packages a subscribed RHEL host gets from AppStream.
-          for repo in BaseOS AppStream; do
-            printf '[cs10-%s]\nname=CS10 %s\nbaseurl=https://mirror.stream.centos.org/10-stream/%s/x86_64/os/\ngpgcheck=0\nenabled=1\n' \
-              "$repo" "$repo" "$repo" > "/etc/yum.repos.d/cs10-$repo.repo"
-          done
-      - name: Install Docker (online)
-        run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
-          bash /tmp/install-docker.sh --yes
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
-
-  # Real airgap end-to-end for every distro: download packages on a clean host,
-  # then install Docker offline from them. Runs in a fresh container (no prior
-  # online install) so the script's "already installed" guard does not trip.
-  airgap-distros:
+  # One job per distro. Airgap runs first on a clean container so the offline
+  # install cannot lean on a Docker repo configured by an earlier online install.
+  # Docker is then removed (the script refuses to install over an existing one)
+  # and the online install is tested. Cleanup and online steps run even if the
+  # airgap steps failed, so one run reports both results.
+  distros:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
     container:
@@ -106,23 +37,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "Airgap Ubuntu 22.04",     image: "ubuntu:22.04",  os: ubuntu, version: jammy,    arch: amd64 }
-          - { name: "Airgap Ubuntu 24.04",     image: "ubuntu:24.04",  os: ubuntu, version: noble,    arch: amd64 }
-          - { name: "Airgap Ubuntu 26.04",     image: "ubuntu:26.04",  os: ubuntu, version: resolute, arch: amd64 }
-          - { name: "Airgap Ubuntu 26.10",     image: "ubuntu:26.10",  os: ubuntu, version: stonking, arch: amd64 }
-          - { name: "Airgap Debian 12",        image: "debian:12",     os: debian, version: bookworm, arch: amd64 }
-          - { name: "Airgap Debian 13",        image: "debian:13",     os: debian, version: trixie,   arch: amd64 }
-          - { name: "Airgap RHEL 8",           image: "registry.access.redhat.com/ubi8/ubi",  os: rhel,   version: "8",  arch: x86_64 }
-          - { name: "Airgap RHEL 9",           image: "registry.access.redhat.com/ubi9/ubi",  os: rhel,   version: "9",  arch: x86_64 }
-          - { name: "Airgap RHEL 10",          image: "registry.access.redhat.com/ubi10/ubi", os: rhel,   version: "10", arch: x86_64 }
-          - { name: "Airgap CentOS Stream 9",  image: "quay.io/centos/centos:stream9",        os: centos, version: "9",  arch: x86_64 }
-          - { name: "Airgap CentOS Stream 10", image: "quay.io/centos/centos:stream10",       os: centos, version: "10", arch: x86_64 }
-          - { name: "Airgap Fedora 43",        image: "fedora:43",     os: fedora, version: "43", arch: x86_64 }
-          - { name: "Airgap Fedora 44",        image: "fedora:44",     os: fedora, version: "44", arch: x86_64 }
-          - { name: "Airgap Fedora 45",        image: "fedora:45",     os: fedora, version: "45", arch: x86_64 }
+          - { name: "Ubuntu 22.04",          image: "ubuntu:22.04",  os: ubuntu, version: jammy,    arch: amd64 }
+          - { name: "Ubuntu 24.04",          image: "ubuntu:24.04",  os: ubuntu, version: noble,    arch: amd64 }
+          - { name: "Ubuntu 26.04",          image: "ubuntu:26.04",  os: ubuntu, version: resolute, arch: amd64 }
+          - { name: "Ubuntu 26.10",          image: "ubuntu:26.10",  os: ubuntu, version: stonking, arch: amd64 }
+          - { name: "Debian 12",             image: "debian:12",     os: debian, version: bookworm, arch: amd64 }
+          - { name: "Debian 13",             image: "debian:13",     os: debian, version: trixie,   arch: amd64 }
+          - { name: "RHEL 8",                image: "registry.access.redhat.com/ubi8/ubi",  os: rhel,   version: "8",  arch: x86_64 }
+          - { name: "RHEL 9",                image: "registry.access.redhat.com/ubi9/ubi",  os: rhel,   version: "9",  arch: x86_64 }
+          - { name: "RHEL 10",               image: "registry.access.redhat.com/ubi10/ubi", os: rhel,   version: "10", arch: x86_64 }
+          - { name: "CentOS Stream 9",       image: "quay.io/centos/centos:stream9",        os: centos, version: "9",  arch: x86_64 }
+          - { name: "CentOS Stream 10",      image: "quay.io/centos/centos:stream10",       os: centos, version: "10", arch: x86_64 }
+          - { name: "Fedora 43",             image: "fedora:43",     os: fedora, version: "43", arch: x86_64 }
+          - { name: "Fedora 44",             image: "fedora:44",     os: fedora, version: "44", arch: x86_64 }
+          - { name: "Fedora 45",             image: "fedora:45",     os: fedora, version: "45", arch: x86_64 }
           # arm64 coverage on native runners: one deb and one rpm distro.
-          - { name: "Airgap Ubuntu 24.04 (arm64)", image: "ubuntu:24.04", os: ubuntu, version: noble, arch: arm64,   runner: ubuntu-24.04-arm }
-          - { name: "Airgap Fedora 44 (arm64)",    image: "fedora:44",    os: fedora, version: "44", arch: aarch64, runner: ubuntu-24.04-arm }
+          - { name: "Ubuntu 24.04 (arm64)",  image: "ubuntu:24.04",  os: ubuntu, version: noble,    arch: arm64,   runner: ubuntu-24.04-arm }
+          - { name: "Fedora 44 (arm64)",     image: "fedora:44",     os: fedora, version: "44",     arch: aarch64, runner: ubuntu-24.04-arm }
     steps:
       - name: Install prerequisites
         run: |
@@ -137,20 +68,36 @@ jobs:
         if: matrix.os == 'rhel' && matrix.version == '10'
         run: |
           # Test-only: gpgcheck=0 on CentOS mirrors stands in for RHEL entitlements; never use on real hosts.
+          # The ubi10 minimal image ships a repo subset that lacks Docker's
+          # runtime deps. CentOS Stream 10 is binary-compatible with RHEL 10 and
+          # provides the same packages a subscribed RHEL host gets from AppStream.
           for repo in BaseOS AppStream; do
             printf '[cs10-%s]\nname=CS10 %s\nbaseurl=https://mirror.stream.centos.org/10-stream/%s/x86_64/os/\ngpgcheck=0\nenabled=1\n' \
               "$repo" "$repo" "$repo" > "/etc/yum.repos.d/cs10-$repo.repo"
           done
+      - name: Mock systemctl (containers have no init)
+        run: printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
       - name: Airgap prepare (real download) then offline install
         run: |
-          printf '#!/bin/bash\nexit 0\n' > /usr/local/bin/systemctl && chmod +x /usr/local/bin/systemctl
           cd /tmp
           bash /tmp/install-docker.sh --airgap --prepare \
             --os ${{ matrix.os }} --os-version ${{ matrix.version }} --arch ${{ matrix.arch }}
           dir=$(ls -d docker-*/ | head -1)
           echo "Prepared package directory: $dir"
           bash /tmp/install-docker.sh --airgap "/tmp/${dir}"
-      - name: Verify Docker version
-        run: docker --version
-      - name: Verify Docker Compose version
-        run: docker compose version
+      - name: Verify Docker (airgap)
+        run: docker --version && docker compose version
+      - name: Remove Docker before online install
+        if: ${{ !cancelled() }}
+        run: |
+          pkgs="docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+          if command -v apt-get >/dev/null; then
+            apt-get purge -y $pkgs || true
+          else
+            dnf remove -y $pkgs || true
+          fi
+      - name: Install Docker (online)
+        if: ${{ !cancelled() }}
+        run: bash /tmp/install-docker.sh --yes
+      - name: Verify Docker (online)
+        run: docker --version && docker compose version

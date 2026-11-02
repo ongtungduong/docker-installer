@@ -121,7 +121,7 @@
 | Metric | Target | Current |
 |---|---|---|
 | **Distro coverage** | Top 14 Linux distros across apt/dnf | 14/14 ✓ |
-| **Test automation** | 100% CI pass before merge | 30 jobs (14 distros × 2 modes: online + real airgap install, plus 2 arm64 airgap) ✓ |
+| **Test automation** | 100% CI pass before merge | 16 jobs (14 distros + 2 arm64, each: real airgap install then online install) ✓ |
 | **Script size** | <500 LOC single script | ~439 LOC (unified online + airgap) ✓ |
 | **Install speed** | <90 seconds on modern hardware | ~30–45 seconds (verified) ✓ |
 | **Security** | GPG verification + checksum validation | apt ✓, dnf ✓, airgap ✓ |
