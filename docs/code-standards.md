@@ -21,7 +21,8 @@ All scripts follow a consistent Bash style optimized for readability, portabilit
 **Readonly constants** — prevent accidental mutation:
 ```bash
 readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
-readonly GPG_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+readonly APT_KEY_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+readonly RPM_KEY_FINGERPRINT="060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35"
 ```
 
 **Global flags** — cluster top-level, clearly named:
@@ -188,10 +189,10 @@ source /etc/os-release            # More portable than .
 
 # Acceptable (bash-only):
 local -n nameref                  # Bash 4.3+
-[[ ... ]]                         # Bash 3.0+
+[[ ... ]]                         # Bash 4.3+
 ```
 
-**Shebang**: Always `#!/bin/bash` (requires Bash 3.0+, not POSIX sh).
+**Shebang**: Always `#!/bin/bash` (requires Bash 4.3+, not POSIX sh).
 
 **Test on at least** the oldest supported distro (Ubuntu 22.04 → Bash 5.1).
 
@@ -244,7 +245,7 @@ Helps navigate 200-line scripts without scrolling infinitely.
    ```bash
    # Online
    bash install-docker.sh --help
-   bash install-docker.sh --version 5:27.5.1-1
+   bash install-docker.sh --version 5:29.8.2-1~ubuntu.24.04~noble
    
    # Airgap prepare (dry-run)
    bash install-docker.sh --airgap --prepare --dry-run
@@ -260,7 +261,7 @@ Helps navigate 200-line scripts without scrolling infinitely.
 
 ### CI Testing
 
-CI runs all 13 distros via `.github/workflows/test-install.yml`. Before pushing:
+CI runs all 15 distros via `.github/workflows/test-install.yml`. Before pushing:
 
 - Ensure no breaking changes to flag parsing
 - No new OS detection logic without testing logic for fallback
@@ -281,7 +282,7 @@ CI runs all 13 distros via `.github/workflows/test-install.yml`. Before pushing:
    fix(airgap): handle symlinks in package dir
    docs: clarify airgap workflow for arm64
    ```
-5. **Push and open PR** — CI matrix will validate all 13 distros + airgap smoke tests
+5. **Push and open PR** — CI matrix will validate all 15 distros + airgap smoke tests
 6. **Wait for all jobs to pass** before merge
 
 ### Code Review Focus
@@ -377,7 +378,7 @@ detect_os() {
 - **Clarity over brevity** — readable bash beats golfed bash
 - **Fail-safe defaults** — cleanup trap, readonly constants, local variables
 - **Explicit error handling** — die() for fatal, warn() for recoverable
-- **Tested paths** — all 13 distros, 2 modes, covered in CI
+- **Tested paths** — all 15 distros, 2 modes, covered in CI
 - **No surprises** — consistent formatting, predictable flow
 
 Contributions that respect these principles will integrate smoothly.

@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-- Bash 3.0+ (Ubuntu 22.04+ has 5.1+)
+- Bash 4.3+ (Ubuntu 22.04+ has 5.1+)
 - sudo or root access
 - curl installed
 
@@ -32,7 +32,7 @@ bash install-docker.sh --help
 bash install-docker.sh --yes
 
 # Test with specific version (requires valid version string)
-bash install-docker.sh --version 5:27.5.1-1~ubuntu.24.04~noble
+bash install-docker.sh --version 5:29.8.2-1~ubuntu.24.04~noble
 
 # Test upgrade flag (after initial install)
 bash install-docker.sh --upgrade
@@ -132,20 +132,21 @@ sudo bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 
 ### Matrix
 
-The workflow tests the unified script across 13 Linux distributions, 3 stages, 26 total jobs:
+The workflow tests the unified script across 15 Linux distributions, 4 job groups, 32 install jobs plus a ShellCheck `lint` job:
 
-#### Stage 1: APT Distros (6 jobs)
+#### Stage 1: APT Distros (7 jobs)
 
 | Distro | Version | Image | Package Manager |
 |--------|---------|-------|---|
 | Ubuntu | 22.04 (Jammy) | ubuntu:22.04 | apt |
 | Ubuntu | 24.04 (Noble) | ubuntu:24.04 | apt |
 | Ubuntu | 26.04 LTS (Resolute) | ubuntu:26.04 | apt |
-| Debian | 11 (Bullseye) | debian:11 | apt |
+| Ubuntu | 26.10 (Stonking) | ubuntu:26.10 | apt |
+| Debian | 11 (Bullseye, EOL, best-effort) | debian:11 | apt |
 | Debian | 12 (Bookworm) | debian:12 | apt |
 | Debian | 13 (Trixie) | debian:13 | apt |
 
-#### Stage 2: DNF Distros (7 jobs)
+#### Stage 2: DNF Distros (8 jobs)
 
 | Distro | Version | Image | Package Manager |
 |--------|---------|-------|---|
@@ -156,16 +157,23 @@ The workflow tests the unified script across 13 Linux distributions, 3 stages, 2
 | CentOS Stream | 10 | quay.io/centos/centos:stream10 | dnf |
 | Fedora | 43 | fedora:43 | dnf |
 | Fedora | 44 | fedora:44 | dnf |
+| Fedora | 45 | fedora:45 | dnf |
 
 RHEL 10's UBI image omits `iptables-nft` and `container-selinux`. Before the
 install step, `apt-distros`/`dnf-distros` add CentOS Stream 10 `BaseOS`/`AppStream`
-repos (binary-compatible with RHEL 10) so those runtime deps resolve.
+repos (binary-compatible with RHEL 10) so those runtime deps resolve. The repo
+is written with `gpgcheck=0`, which is test-only.
 
-#### Stage 3: Real Airgap Install, All 13 Distros (13 jobs)
+#### Stage 3: Real Airgap Install, All 15 Distros (15 jobs + 2 arm64 jobs)
 
 Runs `--airgap --prepare` (real download, not `--dry-run`) followed by
 `--airgap <dir>` in a fresh container per distro — end-to-end offline install,
 not just a syntax check. Uses the same RHEL 10 repo workaround as Stage 2.
+Two extra jobs (Ubuntu 24.04 arm64, Fedora 44 aarch64) run on the native
+`ubuntu-24.04-arm` runner.
+
+A separate `lint` job runs `shellcheck install-docker.sh`. All actions are pinned
+by commit SHA.
 
 ### What Each Job Does
 
@@ -294,7 +302,7 @@ bash install-docker.sh --airgap --prepare --dry-run
 |---------|-------|-----|
 | **APT: "Could not find any package matching docker-ce"** | Distro/version/arch mismatch in prepare | Verify `--os`, `--os-version`, `--arch` match Docker CDN structure |
 | **DNF: "No matching packages found"** | Distro/version/arch mismatch | Verify RPM URL exists; check Fedora version support |
-| **GPG verification fails** | Fingerprint mismatch or gpg not installed | Update `GPG_FINGERPRINT` constant; install gpg in CI job |
+| **GPG verification fails** | Fingerprint mismatch or gpg not installed | Update `APT_KEY_FINGERPRINT` / `RPM_KEY_FINGERPRINT` constant; install gpg in CI job |
 | **systemctl: command not found** | Container lacks systemd | CI job mocks systemctl; ensure mock is in place |
 | **docker --version fails** | Package not installed (dpkg/rpm error) | Check dpkg/rpm output; verify package manager step |
 | **Permission denied on dpkg/rpm** | Not running with sudo | Verify CI job runs as root or uses sudo |
@@ -333,7 +341,7 @@ git push origin [branch]
 ### Release Flow
 
 1. **Create PR** with changes to `install-docker.sh`
-2. **CI validates** all 13 distros, 26 jobs (push to PR triggers `test-install.yml`)
+2. **CI validates** all 15 distros, 32 install jobs (push to PR triggers `test-install.yml`)
 3. **Code review** + approval
 4. **Merge to main** (fast-forward or squash merge)
 5. **Rolling installs**: users can still curl directly from main branch:
@@ -342,11 +350,13 @@ git push origin [branch]
    ```
 6. **Tagged release** (optional, for airgap users): pushing a `v*` tag (or manual
    dispatch with a `version` input) runs `.github/workflows/release.yml`, which:
-   - Builds 26 self-contained airgap bundles (13 distros × amd64/arm64), each a
-     `.tar.gz` with the Docker packages, `checksums.sha256`, `install-docker.sh`,
+   - Builds 30 self-contained airgap bundles (15 distros × amd64/arm64), each a
+     `.tar.gz` with the Docker packages, `checksums.sha256` (plus `docker.gpg` for
+     RPM bundles), `install-docker.sh`,
      and an `INSTALL.txt`
-   - Fails the release if fewer than all 26 bundles built (`build` jobs are
-     read-only; only the `release` job has `contents: write`)
+   - Fails the release if fewer than all 30 bundles built (`build` jobs are
+     read-only; only the `release` job has `contents: write`, and it attests build
+     provenance for the bundles)
    - Generates `SHA256SUMS.txt` and publishes everything as GitHub Release assets
 
 ### Versioning Strategy
@@ -364,7 +374,7 @@ If a commit breaks things:
 
 1. **Identify the bad commit** (GitHub Actions log shows which commit failed)
 2. **Revert on main**: `git revert [bad-commit]`
-3. **CI validates revert** (all 13 distros)
+3. **CI validates revert** (all 15 distros)
 4. **Users automatically get fixed version** on next curl
 
 ---

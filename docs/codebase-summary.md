@@ -13,7 +13,7 @@
 | File | Purpose |
 |---|---|
 | `.github/workflows/test-install.yml` | Automated test matrix: 6 apt distros, 7 dnf distros |
-| `.github/workflows/release.yml` | On tag `v*` / manual dispatch: builds 26 airgap `.tar.gz` bundles (13 distros × amd64/arm64) and publishes a GitHub Release |
+| `.github/workflows/release.yml` | On tag `v*` / manual dispatch: builds 30 airgap `.tar.gz` bundles (15 distros × amd64/arm64) and publishes a GitHub Release |
 | `README.md` | User-facing quick start guide |
 | `docs/project-overview-pdr.md` | Requirements, architecture, roadmap |
 | `docs/codebase-summary.md` | This file |
@@ -28,7 +28,8 @@
 
 ```bash
 readonly DOCKER_PACKAGES=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
-readonly GPG_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+readonly APT_KEY_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+readonly RPM_KEY_FINGERPRINT="060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35"
 ```
 
 Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
@@ -73,7 +74,7 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 2. `install_docker_dnf()`
    - Install dnf-plugins-core
    - Add Docker repo via `dnf config-manager`
-   - Manual GPG fingerprint prompt (if interactive)
+   - Download RPM repo key, verify fingerprint (dies on mismatch), `rpm --import`
    - `dnf install` with optional `--version`
 3. Enable services, configure docker group
 
@@ -130,7 +131,7 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
    - Else die (no packages found)
 3. **Install packages**:
    - **dpkg path**: `sudo dpkg -i *.deb`; on error, `sudo apt-get install -f -y` (auto-fix deps)
-   - **rpm path**: `sudo dnf install -y *.rpm` when dnf is present (resolves deps against installed packages); falls back to `sudo rpm -Uvh --force *.rpm` otherwise
+   - **rpm path**: `sudo dnf install -y *.rpm` when dnf is present (resolves deps against installed packages); dies if dnf is absent (no `rpm --force` fallback)
 4. **Verify install**: `command -v docker` must exist, else die (catches arch mismatch / unmet deps that left a partial install)
 5. **Enable services**: `sudo systemctl enable --now docker containerd`
 6. **Configure docker group** (non-root)
@@ -155,11 +156,11 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 
 ### test-install.yml Configuration
 
-**APT matrix** (6 jobs): Ubuntu 22.04/24.04/26.04, Debian 11/12/13
+**APT matrix** (7 jobs): Ubuntu 22.04/24.04/26.04/26.10, Debian 11/12/13
 
-**DNF matrix** (7 jobs): RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44
+**DNF matrix** (8 jobs): RHEL 8/9/10, CentOS Stream 9/10, Fedora 43/44/45
 
-**Total: 13 distros, 26 jobs** (online install + real airgap install per distro)
+**Total: 15 distros, 32 install jobs** (online + real airgap install per distro, plus arm64 airgap on Ubuntu 24.04 and Fedora 44) and a ShellCheck `lint` job
 
 ### Test Steps
 
@@ -171,7 +172,7 @@ Global flags: `ASSUME_YES`, `UPGRADE`, `DOCKER_VERSION`
 5. Run `install-docker.sh --yes`
 6. Verify `docker --version` and `docker compose version`
 
-**Airgap jobs** (`airgap-distros`, all 13 distros, fresh container):
+**Airgap jobs** (`airgap-distros`, all 15 distros + 2 arm64, fresh container):
 1. Install curl, sudo; download script
 2. (RHEL 10 only) enable CentOS Stream 10 base repos
 3. Real prepare: `install-docker.sh --airgap --prepare --os … --arch …`
@@ -240,8 +241,8 @@ Airgap Install:
 
 ## Testing Checklist
 
-- [ ] All 13 distros pass online install (`install-docker.sh --yes`)
-- [ ] All 13 distros pass airgap real prepare + offline install (`airgap-distros` job)
+- [ ] All 15 distros pass online install (`install-docker.sh --yes`)
+- [ ] All 15 distros pass airgap real prepare + offline install (`airgap-distros` job)
 - [ ] GPG fingerprint verified (apt only, requires gpg CLI)
 - [ ] Checksum verification catches corrupted packages
 - [ ] Cleanup trap removes partial config on failure

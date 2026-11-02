@@ -18,15 +18,15 @@ curl -fsSL https://raw.githubusercontent.com/ongtungduong/docker-installer/main/
 
 - **Online Installation (default)**: Installs Docker directly via the official APT or DNF repositories.
 - **Airgap/Offline (`--airgap`)**: Downloads packages for offline use (`--airgap --prepare`) or installs from previously downloaded packages (`--airgap <dir>`).
-- **GPG Verification**: Validates Docker's official GPG fingerprint on apt-based systems.
-- **SHA256 Checksums**: Integrity checking for offline packages.
-- **Automated Testing**: CI matrix validates on 13 Linux distributions.
+- **GPG Verification**: Validates Docker's official GPG fingerprint (apt and dnf) and aborts on mismatch.
+- **SHA256 Checksums**: Integrity checking for offline packages (required unless `--allow-unverified`).
+- **Automated Testing**: CI matrix validates on 15 Linux distributions (plus arm64 airgap installs on Ubuntu 24.04 and Fedora 44).
 
 ## Prerequisites
 
 - Root or sudo privileges (for installation)
-- Bash 3.0+ (standard on all supported distros)
-- No existing Docker installation (uninstall any conflicting packages first, or use `--upgrade`)
+- Bash 4.3+ (standard on all supported distros)
+- No existing Docker installation and no conflicting packages (`docker.io`, `docker-compose`, `docker-compose-v2`, `docker-doc`, `podman-docker`, `containerd`, `runc`, `podman`, …). The installer lists them with the removal command and aborts; it never removes them itself. Use `--upgrade` for an existing Docker CE install.
 
 ## Usage
 
@@ -43,7 +43,7 @@ bash <(curl -sSL https://raw.githubusercontent.com/ongtungduong/docker-installer
 | Flag | Description | Example |
 | ---- | ----------- | ------- |
 | `-y, --yes` | Non-interactive mode — skip all confirmation prompts. | `--yes` |
-| `--version <ver>` | Install a specific Docker version. | `--version 5:27.5.1-1~ubuntu.24.04~noble` |
+| `--version <ver>` | Pin `docker-ce` and `docker-ce-cli` to this package version (other packages follow the repo). apt: `5:29.8.2-1~ubuntu.24.04~noble`; dnf: `3:29.8.2-1.el9`. | `--version 5:29.8.2-1~ubuntu.24.04~noble` |
 | `--upgrade` | Upgrade Docker if already installed (instead of aborting). | `--upgrade` |
 | `-h, --help` | Show help message. | `--help` |
 
@@ -54,7 +54,7 @@ bash <(curl -sSL https://raw.githubusercontent.com/ongtungduong/docker-installer
 bash <(curl -sSL https://raw.githubusercontent.com/ongtungduong/docker-installer/main/install-docker.sh) --yes
 
 # Install a specific Docker version
-bash install-docker.sh --version 5:27.5.1-1~ubuntu.24.04~noble
+bash install-docker.sh --version 5:29.8.2-1~ubuntu.24.04~noble
 
 # Upgrade existing Docker installation
 bash install-docker.sh --upgrade --yes
@@ -64,14 +64,16 @@ bash install-docker.sh --upgrade --yes
 
 | OS                  | Versions                                  | Architecture | Package Manager |
 | ------------------- | ----------------------------------------- | ------------ | --------------- |
-| **Ubuntu**          | 22.04 LTS, 24.04 LTS, 26.04 LTS           | amd64, arm64 | apt             |
-| **Debian**          | 11, 12, 13                               | amd64, arm64, armhf | apt         |
-| **Raspberry Pi OS** | 11, 12                                    | armhf        | apt             |
+| **Ubuntu**          | 22.04 LTS, 24.04 LTS, 26.04 LTS, 26.10    | amd64, arm64 | apt             |
+| **Debian**          | 12, 13; 11 (EOL, best-effort)            | amd64, arm64, armhf | apt         |
+| **Raspberry Pi OS** | 11, 12 (32-bit armhf is deprecated by Docker; Engine v28 is the last supported major) | armhf | apt |
 | **RHEL**            | 8, 9, 10                                  | x86_64, aarch64 | dnf            |
 | **CentOS Stream**   | 9, 10                                     | x86_64, aarch64 | dnf            |
-| **Fedora**          | 43, 44                                    | x86_64, aarch64 | dnf            |
+| **Fedora**          | 43, 44, 45                                  | x86_64, aarch64 | dnf            |
 
-**Total CI coverage**: 13 distributions × 2 modes (online install + real end-to-end airgap install) = 26 automated jobs before each release.
+Debian 11 is no longer listed in Docker's official docs; it stays in CI and bundles but is best-effort. Docker also publishes s390x (Ubuntu, RHEL) and ppc64le (Ubuntu, Debian, Fedora, CentOS) packages; `--prepare` passes these architectures through, but this repo's CI covers amd64 and arm64 only.
+
+**Total CI coverage**: 15 distributions × 2 modes (online install + real end-to-end airgap install) + 2 arm64 airgap installs = 32 install jobs, plus a ShellCheck lint job.
 
 ### 2. Airgapped Installation (Offline)
 
@@ -79,7 +81,7 @@ bash install-docker.sh --upgrade --yes
 
 Each [release](https://github.com/ongtungduong/docker-installer/releases) ships a
 self-contained `.tar.gz` per distro and architecture (amd64 + arm64), bundling the
-Docker packages, `checksums.sha256`, and `install-docker.sh`:
+Docker packages, `checksums.sha256` (plus `docker.gpg` for RPM bundles), and `install-docker.sh`:
 
 ```bash
 # On the offline server (example: Ubuntu 24.04 amd64)
@@ -88,7 +90,7 @@ cd docker-ubuntu-noble-amd64
 sudo ./install-docker.sh --airgap "$(pwd)"
 ```
 
-Verify a download against the release's `SHA256SUMS.txt` before transferring.
+Verify a download against the release's `SHA256SUMS.txt` before transferring (see Security Notes).
 
 #### Option B: Prepare packages yourself
 
@@ -104,12 +106,13 @@ bash install-docker.sh --airgap --prepare
 bash install-docker.sh --airgap --prepare --os ubuntu --os-version noble --arch amd64
 
 # Preview what would be downloaded (dry-run)
-bash install-docker.sh --airgap --prepare --os fedora --os-version 42 --arch x86_64 --dry-run
+bash install-docker.sh --airgap --prepare --os fedora --os-version 44 --arch x86_64 --dry-run
 ```
 
 **Output**: A directory like `docker-ubuntu-noble-amd64-20260322/` containing:
 - 5 Docker packages (docker-ce, docker-ce-cli, containerd.io, buildx-plugin, compose-plugin)
 - `checksums.sha256` file for integrity verification
+- `docker.gpg` (RPM only): Docker's RPM repo key, fingerprint-verified at prepare time
 
 #### Step 2: Transfer to Offline Server
 
@@ -128,7 +131,7 @@ bash install-docker.sh --airgap /tmp/docker-ubuntu-noble-amd64-20260322
 ```
 
 The script will:
-1. Verify SHA256 checksums against `checksums.sha256` (prevents corrupted/tampered packages).
+1. Verify SHA256 checksums against `checksums.sha256`. The install aborts if the file is missing unless `--allow-unverified` is passed. RPM bundles also import the bundled `docker.gpg`.
 2. Auto-detect `.deb` or `.rpm` packages and install them.
 3. Enable Docker & containerd services to start on boot.
 4. Configure docker group for non-root access.
@@ -142,8 +145,9 @@ Pass `--airgap` first, then either `--prepare` (with the flags below) to downloa
 | `--airgap` | Activate airgap mode (prepend to all airgap commands). | `--airgap` |
 | `--prepare` | Download mode (used with `--airgap`). | `--airgap --prepare` |
 | `--os <os>` | Target OS: ubuntu, debian, raspbian, rhel, centos, fedora | `--os ubuntu` |
-| `--os-version <ver>` | OS version/codename: noble (24.04), resolute (26.04), 10 (RHEL 10), 44 (Fedora 44) | `--os-version noble` |
-| `--arch <arch>` | Architecture: amd64, arm64, x86_64, aarch64, armhf | `--arch amd64` |
+| `--os-version <ver>` | OS version/codename: noble (24.04), resolute (26.04), stonking (26.10), 10 (RHEL 10), 45 (Fedora 45) | `--os-version noble` |
+| `--arch <arch>` | Architecture: amd64, arm64, x86_64, aarch64, armhf, ppc64le/ppc64el, s390x | `--arch amd64` |
+| `--allow-unverified` | Install even if `checksums.sha256` is missing (no integrity check; use only for packages you obtained and verified yourself). | `--airgap <dir> --allow-unverified` |
 | `--dry-run` | Show what would download without actually downloading. | `--dry-run` |
 | `-h, --help` | Show help. | `--help` |
 
@@ -151,12 +155,12 @@ Pass `--airgap` first, then either `--prepare` (with the flags below) to downloa
 
 | OS                  | Architectures                   |
 | ------------------- | ------------------------------- |
-| **Ubuntu**          | amd64 (x86_64), arm64 (aarch64) |
-| **Debian**          | amd64, arm64, armhf             |
+| **Ubuntu**          | amd64 (x86_64), arm64 (aarch64), ppc64le, s390x |
+| **Debian**          | amd64, arm64, armhf, ppc64le    |
 | **Raspberry Pi OS** | armhf (32-bit ARM)              |
-| **RHEL**            | x86_64, aarch64                 |
-| **CentOS Stream**   | x86_64, aarch64                 |
-| **Fedora**          | x86_64, aarch64                 |
+| **RHEL**            | x86_64, aarch64, s390x          |
+| **CentOS Stream**   | x86_64, aarch64, ppc64le        |
+| **Fedora**          | x86_64, aarch64, ppc64le        |
 
 ## Verification
 
@@ -169,6 +173,13 @@ docker compose version
 ```
 
 If using non-root mode, you may need to log out and back in to apply docker group permissions.
+
+## Security Notes
+
+- **docker group is root-equivalent**: any member can mount the host filesystem into a container. The installer adds your user to the group and prints a warning; add only trusted users.
+- **Firewall bypass**: ports published by containers bypass `ufw`/`firewalld` rules. Docker supports only `iptables-nft` and `iptables-legacy` (rules created with native nft are unsupported). Restrict published ports via the `DOCKER-USER` chain.
+- **Airgap authenticity**: DEB bundles carry checksums only (integrity, not authenticity); RPM bundles additionally carry the repo key and are signature-checked on install. Verify the downloaded bundle against the release `SHA256SUMS.txt`, and keep `--allow-unverified` for packages you vetted yourself.
+- **Pin the installer when using `curl | bash`**: replace `main` in the URL with a release tag or commit SHA so the script cannot change under you.
 
 ## Documentation
 
@@ -185,7 +196,9 @@ For more information:
 | ----- | -------- |
 | **"Docker is already installed"** | Use `--upgrade` flag to update existing installation, or uninstall first: `apt remove docker-ce` or `dnf remove docker-ce` |
 | **Permission denied on docker commands** | User not in docker group; log out and back in, or `newgrp docker` |
-| **"gpg not found" warning (apt)** | GPG verification skipped but repo trusted; safe to continue |
+| **"gpg" missing** | The installer installs `gnupg` (apt) / `gnupg2` (dnf) itself to verify Docker's repo key; if that fails, install gpg manually and re-run |
+| **"Conflicting packages found"** | Remove the listed packages (the message prints the command), then re-run; the installer never removes them automatically |
+| **"checksums.sha256 not found" (airgap)** | Re-run `--airgap --prepare` or use a release bundle; pass `--allow-unverified` only for packages you verified yourself |
 | **Checksum mismatch (airgap)** | Package corrupted during transfer; re-download via `--airgap --prepare` |
 | **systemctl not available (containers)** | Expected in CI/Docker containers; services won't auto-start but installation succeeds |
 

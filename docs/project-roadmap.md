@@ -7,13 +7,12 @@
 - Online installation via dnf (RHEL, CentOS Stream, Fedora)
 - Airgap prepare mode (download packages on internet-connected machine)
 - Airgap install mode (install from pre-downloaded packages on offline machine)
-- GPG fingerprint verification (apt only)
+- GPG fingerprint verification (apt and dnf)
 - SHA256 checksum validation (airgap mode)
-- Automated CI testing on 13 distributions, 2 package managers
-- Tagged GitHub Releases publishing 26 self-contained airgap bundles (13 distros × amd64/arm64) with checksums
+- Automated CI testing on 15 distributions, 2 package managers
+- Tagged GitHub Releases publishing 30 self-contained airgap bundles (15 distros × amd64/arm64) with checksums
 
 **Current limitations**:
-- dnf path lacks fingerprint verification (manual prompt only)
 - No package manager support for zypper (SUSE/openSUSE)
 - Limited architecture auto-detection for ARM edge devices
 - Docker daemon configuration is manual (user edits `/etc/docker/daemon.json`)
@@ -22,7 +21,7 @@
 
 ## Planned Improvements
 
-### Phase 1: DNF GPG Verification (Medium Priority)
+### Phase 1: DNF GPG Verification (Shipped)
 
 **Objective**: Implement fingerprint validation for dnf installs to match apt security.
 
@@ -109,7 +108,7 @@
 
 | Limitation | Impact | Workaround |
 |---|---|---|
-| **DNF lacks fingerprint verification** | dnf installs trust repos implicitly (accepts manual prompt) | Monitor Docker repo changes; consider signed RPMs in future |
+| **Airgap DEB bundles lack authenticity** | Checksums prove integrity only | Verify the release `SHA256SUMS.txt`; RPM bundles carry the verified repo key |
 | **Airgap prepare requires internet** | Must run on connected machine first | Use GitHub Actions to auto-prepare and cache packages in private repos |
 | **No daemon.json auto-generation** | Users manually configure Docker settings | Provide example configs in deployment guide; document common patterns |
 | **Limited exotic arch support** | armv6/armv8 edge cases may need manual fixes | Test on actual hardware; document workarounds per distro |
@@ -121,11 +120,11 @@
 
 | Metric | Target | Current |
 |---|---|---|
-| **Distro coverage** | Top 13 Linux distros across apt/dnf | 13/13 ✓ |
-| **Test automation** | 100% CI pass before merge | 26 jobs (13 distros × 2 modes: online + real airgap install) ✓ |
+| **Distro coverage** | Top 15 Linux distros across apt/dnf | 15/15 ✓ |
+| **Test automation** | 100% CI pass before merge | 32 jobs (15 distros × 2 modes: online + real airgap install, plus 2 arm64 airgap) ✓ |
 | **Script size** | <500 LOC single script | ~439 LOC (unified online + airgap) ✓ |
 | **Install speed** | <90 seconds on modern hardware | ~30–45 seconds (verified) ✓ |
-| **Security** | GPG verification + checksum validation | apt ✓, airgap ✓, dnf → pending |
+| **Security** | GPG verification + checksum validation | apt ✓, dnf ✓, airgap ✓ |
 | **User adoption** | Steady GitHub stars, low issue rate | Tracking |
 
 ---
@@ -134,7 +133,7 @@
 
 | Version | Target | Content |
 |---|---|---|
-| **v1.0** | Q2 2025 | Online + airgap core features, 13 distros |
+| **v1.0** | Q2 2025 | Online + airgap core features, 13 distros (now 15) |
 | **v1.1** | Q3 2025 | DNF fingerprint verification, improved ARM docs |
 | **v1.2** | Q4 2025 | Airgap version pinning, zypper exploration |
 | **v2.0** | 2026+ | zypper support, extended architecture coverage |

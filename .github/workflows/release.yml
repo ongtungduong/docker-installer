@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Cross product: 2 arches x 13 distros = 26 bundles.
+      # Cross product: 2 arches x 15 distros = 30 bundles.
       # distro is encoded "<os>-<version>" (no os/version contains a hyphen).
       matrix:
         arch: [amd64, arm64]
@@ -30,6 +30,7 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
           - ubuntu-resolute
+          - ubuntu-stonking
           - debian-bullseye
           - debian-bookworm
           - debian-trixie
@@ -40,9 +41,10 @@ jobs:
           - centos-10
           - fedora-43
           - fedora-44
+          - fedora-45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build self-contained bundle
         run: |
           set -euo pipefail
@@ -75,7 +77,7 @@ jobs:
           echo "Built ${bundle}.tar.gz:"
           tar -tzf "${bundle}.tar.gz"
       - name: Upload bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bundle-${{ matrix.distro }}-${{ matrix.arch }}
           path: docker-*.tar.gz
@@ -87,9 +89,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Download all bundles
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: dist
           pattern: bundle-*
@@ -100,12 +104,16 @@ jobs:
           cd dist
           count=$(ls -1 *.tar.gz | wc -l)
           echo "Total bundles: $count"
-          # All-or-nothing: never publish a partial set (13 distros x 2 arches).
-          [ "$count" -eq 26 ] || { echo "::error::expected 26 bundles, got $count"; exit 1; }
+          # All-or-nothing: never publish a partial set (15 distros x 2 arches).
+          [ "$count" -eq 30 ] || { echo "::error::expected 30 bundles, got $count"; exit 1; }
           sha256sum -- *.tar.gz > SHA256SUMS.txt
           cat SHA256SUMS.txt
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
       - name: Publish release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.VERSION }}
           name: ${{ env.VERSION }}

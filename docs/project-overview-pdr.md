@@ -9,7 +9,7 @@ Provide fast, reliable shell-script tooling to install Docker Engine and depende
 ## Goals
 
 1. **Simplify Docker setup** — Single command to install, no manual repository configuration or GPG key steps
-2. **Support standard Linux distributions** — Cover 13+ distros across two package managers (apt, dnf)
+2. **Support standard Linux distributions** — Cover 15+ distros across two package managers (apt, dnf)
 3. **Secure by default** — GPG fingerprint verification, SHA256 checksum validation in offline mode
 4. **Self-service deployment** — No custom packaging, artifact hosting, or infrastructure beyond GitHub
 5. **Automate testing** — CI matrix validates both scripts on all supported distros before merge
@@ -35,7 +35,7 @@ Provide fast, reliable shell-script tooling to install Docker Engine and depende
 | Installation speed | <90 seconds on modern hardware |
 | Script size | <450 LOC for unified script (keep it readable) |
 | GPG/checksum verification | 100% success on valid packages, 100% failure on corrupted/tampered |
-| Distro support | All 13 tested distros pass CI matrix before merge |
+| Distro support | All 15 tested distros pass CI matrix before merge |
 | Error recovery | Cleanup trap removes partial config on failure; no orphaned repos |
 | User experience | One-liner curl for online, 2-command workflow for airgap |
 
@@ -65,8 +65,8 @@ Both scripts install:
 | Component | Mechanism |
 |-----------|-----------|
 | **apt** | GPG key verification using Docker's official fingerprint `9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88` |
-| **dnf** | Manual prompt (interactive) or silent pass in non-interactive mode; no key file verification currently |
-| **Airgap** | SHA256 checksums pre-computed on prepare, validated before install |
+| **dnf** | RPM key downloaded and verified against `060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35` (dies on mismatch), then `rpm --import` |
+| **Airgap** | SHA256 checksums pre-computed on prepare, required at install (`--allow-unverified` to bypass); RPM bundles also carry a fingerprint-verified `docker.gpg` |
 
 ## Supported Platforms
 
@@ -74,9 +74,9 @@ Both scripts install:
 
 | Distribution | Versions | Arch |
 |---|---|---|
-| Ubuntu | 22.04 LTS, 24.04 LTS, 26.04 LTS | amd64, arm64 |
-| Debian | 11 (Bullseye), 12 (Bookworm), 13 (Trixie) | amd64, armhf, arm64 |
-| Raspberry Pi OS | 11, 12 | armhf |
+| Ubuntu | 22.04 LTS, 24.04 LTS, 26.04 LTS, 26.10 | amd64, arm64 |
+| Debian | 11 (Bullseye, EOL, best-effort), 12 (Bookworm), 13 (Trixie) | amd64, armhf, arm64 |
+| Raspberry Pi OS | 11, 12 (32-bit armhf deprecated by Docker; v28 is the last supported major) | armhf |
 
 ### DNF (Red Hat-based)
 
@@ -84,9 +84,9 @@ Both scripts install:
 |---|---|---|
 | RHEL | 8, 9, 10 | x86_64, aarch64 |
 | CentOS Stream | 9, 10 | x86_64, aarch64 |
-| Fedora | 43, 44 | x86_64, aarch64 |
+| Fedora | 43, 44, 45 | x86_64, aarch64 |
 
-**Total: 13 distros × 2 modes = 26 CI test jobs**
+**Total: 15 distros × 2 modes + 2 arm64 airgap = 32 CI install jobs** (plus a ShellCheck lint job). Docker also lists s390x and ppc64le for some distros; the script passes these through in `--prepare`, CI covers amd64/arm64 only.
 
 ## Failure Modes & Recovery
 
@@ -101,11 +101,11 @@ Both scripts install:
 ## Release Process
 
 1. Edit script(s) locally
-2. Run through full CI matrix on PR (`test-install.yml`, 26 jobs)
+2. Run through full CI matrix on PR (`test-install.yml`, 32 install jobs)
 3. All jobs pass → merge to main
 4. Rolling installs: users curl `install-docker.sh` directly from `main`
 5. Tagged installs (optional): pushing a `v*` tag runs `release.yml`, which
-   builds 26 airgap bundles (13 distros × amd64/arm64) and publishes them as
+   builds 30 airgap bundles (15 distros × amd64/arm64) and publishes them as
    GitHub Release assets with `SHA256SUMS.txt`
 
 ## Future Roadmap
@@ -122,6 +122,6 @@ Both scripts install:
 ### Known Limitations
 
 - Airgap prepare requires internet access; no mirror support
-- DNF GPG verification is manual/deferred (no fingerprint check in code)
+- Airgap DEB bundles provide integrity (checksums) but not authenticity; verify the release `SHA256SUMS.txt`
 - Scripts do not configure Docker daemon settings (users must customize `/etc/docker/daemon.json`)
 - No automatic Docker storage driver selection for exotic setups (LVM, ZFS, etc.)

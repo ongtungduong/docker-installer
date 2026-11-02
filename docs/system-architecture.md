@@ -175,7 +175,7 @@ do_install($pkg_dir)
   │   │
   │   └─ .rpm path:
   │       ├─ dnf present: sudo dnf install -y $pkg_dir/*.rpm (resolves deps)
-  │       └─ Fallback:    sudo rpm -Uvh --force $pkg_dir/*.rpm
+  │       └─ dnf absent:  die
   │
   ├─ systemctl enable --now docker containerd
   │
@@ -238,7 +238,8 @@ readonly DOCKER_PACKAGES=(
     docker-compose-plugin
 )
 
-readonly GPG_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+readonly APT_KEY_FINGERPRINT="9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88"
+readonly RPM_KEY_FINGERPRINT="060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35"
 ```
 
 ---
@@ -273,12 +274,13 @@ Exit: 0 (cleanup trap skips on success)
 
 | Stage | Count | Coverage |
 |-------|-------|----------|
-| **apt-distros** (online install) | 6 | Ubuntu 22.04, 24.04, 26.04 · Debian 11, 12, 13 |
-| **dnf-distros** (online install) | 7 | RHEL 8, 9, 10 · CentOS Stream 9, 10 · Fedora 43, 44 |
-| **airgap-distros** (real prepare + offline install) | 13 | every supported distro |
-| **Total** | 26 | 13 online + 13 airgap job runs |
+| **lint** (ShellCheck) | 1 | `install-docker.sh` |
+| **apt-distros** (online install) | 7 | Ubuntu 22.04, 24.04, 26.04, 26.10 · Debian 11, 12, 13 |
+| **dnf-distros** (online install) | 8 | RHEL 8, 9, 10 · CentOS Stream 9, 10 · Fedora 43, 44, 45 |
+| **airgap-distros** (real prepare + offline install) | 17 | every supported distro + arm64 on Ubuntu 24.04 and Fedora 44 (`ubuntu-24.04-arm` runner) |
+| **Total install jobs** | 32 | 15 online + 15 airgap + 2 arm64 airgap |
 
-**Online jobs** (`apt-distros` + `dnf-distros`, 13 distros):
+**Online jobs** (`apt-distros` + `dnf-distros`, 15 distros):
 1. Install curl + sudo
 2. Download script from current commit
 3. (RHEL 10 only) enable CentOS Stream 10 base repos so UBI can resolve Docker's runtime deps
@@ -286,7 +288,7 @@ Exit: 0 (cleanup trap skips on success)
 5. Run `install-docker.sh --yes` (online mode)
 6. Verify `docker --version` and `docker compose version`
 
-**Airgap jobs** (`airgap-distros`, all 13 distros, real end-to-end in a fresh container):
+**Airgap jobs** (`airgap-distros`, all 15 distros + 2 arm64, real end-to-end in a fresh container):
 1. Install curl + sudo
 2. Download script from current commit
 3. (RHEL 10 only) enable CentOS Stream 10 base repos
