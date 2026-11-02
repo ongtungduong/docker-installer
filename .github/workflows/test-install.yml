@@ -40,6 +40,12 @@ jobs:
           - { name: "Debian 12",     image: "debian:12",     os: debian, version: bookworm }
           - { name: "Debian 13",     image: "debian:13",     os: debian, version: trixie }
     steps:
+      - name: Point Debian 11 at archive mirror (bullseye LTS ended; security pool pruned)
+        if: matrix.version == 'bullseye'
+        run: |
+          printf 'deb http://archive.debian.org/debian bullseye main\ndeb http://archive.debian.org/debian-security bullseye-security main\n' > /etc/apt/sources.list
+          rm -f /etc/apt/sources.list.d/*
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archive
       - name: Install curl
         run: apt-get update -y && apt-get install -y curl sudo
       - name: Download installer
@@ -126,12 +132,18 @@ jobs:
           - { name: "Airgap Ubuntu 24.04 (arm64)", image: "ubuntu:24.04", os: ubuntu, version: noble, arch: arm64,   runner: ubuntu-24.04-arm }
           - { name: "Airgap Fedora 44 (arm64)",    image: "fedora:44",    os: fedora, version: "44", arch: aarch64, runner: ubuntu-24.04-arm }
     steps:
+      - name: Point Debian 11 at archive mirror (bullseye LTS ended; security pool pruned)
+        if: matrix.version == 'bullseye'
+        run: |
+          printf 'deb http://archive.debian.org/debian bullseye main\ndeb http://archive.debian.org/debian-security bullseye-security main\n' > /etc/apt/sources.list
+          rm -f /etc/apt/sources.list.d/*
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archive
       - name: Install prerequisites
         run: |
           if command -v apt-get >/dev/null; then
             apt-get update -y && apt-get install -y curl sudo
           else
-            dnf install -y --allowerasing curl sudo
+            dnf install -y --allowerasing curl sudo gnupg2
           fi
       - name: Download installer
         run: curl -sSL ${{ env.SCRIPT_URL }} -o /tmp/install-docker.sh
