@@ -201,7 +201,7 @@ Every `distros` job runs, in a fresh container:
    ```
    Then verify `docker --version` and `docker compose version`.
 
-5. **Remove Docker** (`apt-get purge` / `dnf remove` of docker-ce, docker-ce-cli,
+5. **Remove Docker** (`apt-get purge` / `rpm -e --nodeps` of docker-ce, docker-ce-cli,
    containerd.io, docker-buildx-plugin, docker-compose-plugin), because the script
    refuses to install over an existing Docker.
 

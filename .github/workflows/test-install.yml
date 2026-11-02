@@ -94,7 +94,8 @@ jobs:
           if command -v apt-get >/dev/null; then
             apt-get purge -y $pkgs || true
           else
-            dnf remove -y $pkgs || true
+            # rpm -e: `dnf remove` also tries to drop container-selinux, which Fedora 43 refuses (protected selinux-policy-targeted).
+            rpm -e --nodeps $pkgs || true
           fi
       - name: Install Docker (online)
         if: ${{ !cancelled() }}
